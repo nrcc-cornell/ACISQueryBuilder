@@ -1,0 +1,1336 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+	<head>
+	<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+	<title>ACIS Web Services Query Builder</title>
+	<link rel="stylesheet" type="text/css" href="http://scacis.rcc-acis.org/css/redmond/jquery-ui-all.css" />
+	<link rel="stylesheet" type="text/css" href="./ACIS_Builder.css" />
+	<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+	<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/jquery-ui.min.js"></script>
+	<script type="text/javascript" src="http://scacis.rcc-acis.org/js/date.min.js"></script>
+	<script type="text/javascript" src="http://scacis.rcc-acis.org/js/json2.min.js"></script>
+	<script type="text/javascript" src="http://xmacis2.rcc-acis.org/js/jquery.acis-widgets.js"></script>
+	<noscript>
+		<style type="text/css">
+			.pagecontainer {display:none;}
+		</style>
+		<div class="noscriptmsg">
+		It appears you don't have JavaScript enabled.  Please turn on JavaScript to use this site.
+		</div>
+	</noscript>
+	<script type="text/javascript">
+		function makeList(x) {
+			var l = [];
+			$(x.split(",")).each(function (i, e) {
+				l.push(parseFloat(e.replace(/[^\d\-\.]/g, '')));
+			});
+			return l;
+		}
+		function makeObject(items) {
+			var newObj = {};
+			$.each(items, function (i, j) {
+				if (j[1]) {
+					newObj[j[0]] = j[1];
+				}
+			});
+			return newObj;
+		}
+		function table_events(ttype, input_name, table) {
+			$(ttype + "[name=" + input_name + "]")
+				.die("focusin focusout")
+				// need to delay show/hide to allow time for click event to fire
+				.live("focusin", function () {
+					setTimeout(function () {
+						$("#" + table).show();
+					}, 200);
+				})
+				.live("focusout", function () {
+					setTimeout(function () {
+						$("#" + table).hide();
+					}, 200);
+				});
+		}
+		function process_request(params) {
+			var args = JSON.stringify(params),
+				server = $("#wstype input:checked").val();
+			$("#jparams_h2").html('Parameters (JSON)');
+			$("#jparams").empty().html("<pre>" + args + "<\/pre>");
+			$("#jresults_h2 span").html('Results');
+			$('#jresults').empty().html('Loading...');
+			$("#formatButton").hide();
+			$("#output").show();
+			if (server.search("General") >= 0) {
+				server += $("select[name=area] :selected").text();
+				$("#jparams pre").prepend("Server=http://data.rcc-acis.org/General/" + $('select[name=area] :selected').text() + "&nbsp;&nbsp;&nbsp;params=");
+			}
+			if (params.output && params.output.toLowerCase() === "image") {
+				$("#jresults_h2 span").html('Results (PNG)');
+				$("#jresults").empty().html("<img src='http://data.rcc-acis.org/GridData?params=" + args + "'><\/img>");
+			} else {
+				// using proxy server to avoid cross domain problems
+				$.post("http://scacis.rcc-acis.org/virga" + server, {params: args}, function (res) {
+					if (params.output && params.output.toLowerCase() === "csv") {
+						$("#jresults_h2 span").html('Results (CSV)');
+						$("#jresults").empty().html("<pre>" + res + "<\/pre>");
+					} else {
+						$("#jresults_h2 span").html('Results (JSON)');
+						$("#jresults").empty().html("<pre>" + JSON.stringify(res) + "<\/pre>");
+						$("#formatButton").text("Format").show().off("click").on("click", function () {
+							$(this).hide();
+							if ($(this).text() === "Format") {
+								$("#jresults_h2 span").html('Results (formatted)');
+								$("#jresults").empty();
+								$.each(res, function (key, val) {
+									$("#jresults").append("<pre>" + key + ":<\/pre>");
+									if (key === "data" && typeof (val) === 'string' && val.search("image/png;base64") >= 0) {
+										$("#jresults").append("<img src='" + val + "'><\/img>");
+									} else {
+										$(val).each(function (i, elem) {
+											$("#jresults").append("<pre>" + JSON.stringify(elem) + "<\/pre>");
+										});
+									}
+								});
+								$(this).text("Back to raw").show();
+							} else {
+								$("#jresults_h2 span").html('Results (JSON)');
+								$("#jresults").empty().html("<pre>" + JSON.stringify(res) + "<\/pre>");
+								$(this).text("Format").show();
+							}
+						});
+					}
+				});
+			}
+			$("#jparams").one("keyup", function () {
+				if (server.search("General") < 0) {
+					$("#jparams_h2").html('Parameters (JSON) <button id="submitJson" class="otherButtons ui-corner-all ui-state-default">Submit</button>');
+					$("#specs input,textarea,button").attr("disabled", true).addClass("grayout");
+					$("#submitJson").attr("disabled", false).on("click", function () {
+						$("#specs input,textarea,button").attr("disabled", false).removeClass("grayout");
+						process_request(JSON.parse($("#jparams").text()));
+					});
+				}
+			});
+		}
+		function collect_data() {
+			var params = {}, img_obj = {};
+			$('#specs input').not(".elems_opts input").not(".image_opts input").each(function () {
+				if (this.name.length && this.value.length) {
+					params[this.name] = this.value.replace(/,\s/g, ",").toLowerCase();
+				}
+			});
+			if ($("textarea[name=elems_container]").is(":visible") && $("textarea[name=elems_container]").val().length) {
+				params.elems = JSON.parse($("textarea[name=elems_container]").val());
+			}
+			if ($("#showimgopts").length && $("#showimgopts").is(":checked")) {
+				$('.image_opts input').each(function () {
+					if (this.name.length && this.value.length) {
+						if (this.name === 'levels') {
+							img_obj.levels = makeList(this.value);
+						} else if ($.isNumeric(this.value)) {
+							img_obj[this.name] = parseInt(this.value, 10);
+						} else {
+							img_obj[this.name] = this.value.replace(/,\s/g, ",");
+						}
+					}
+				});
+				params["image"] = img_obj;
+			}
+			if (params.meta && params.meta.search('valid_daterange') >= 0 && !params.elems) {
+				alert("Need to specify elements when requesting valid_daterange");
+				$("[name=elems]").addClass("makeRequired").effect("highlight", {color: "yellow"}, 1000).focus();
+				return false;
+			}
+			if ($("#singledate").is(":checked")) {
+				params.date = params.sdate;
+				delete params.sdate;
+				delete params.edate;
+			}
+			process_request(params);
+		}
+		function add_element_interaction() {
+			var single_elem, elem_list, combo_list;
+			$("#add_elem").button().on("click", function () {
+				if ($("input[name=duration]").val().search(/std/i) >= 0 && $("input[name=season_start]").val().length === 0) {
+					if ($("input[name=interval]").val().search(/dly/i) >= 0) {
+						alert("For dly season-to-date, need to specify a season start in the form mm-dd");
+					} else {
+						alert("For mly season-to-date, need to specify a season start in the form mm");
+					}
+					$("[name=season_start]").effect("highlight", {color: "yellow"}, 1000).focus();
+					return false;
+				}
+				if ($("input[name=duration]").val().length && $("input[name=duration]").val().search(/dly/i) < 0 && $("input[name=duration]").val() !== "1" && $("input[name=reduce]").val().length === 0) {
+					alert("For this duration, need to specify a reduction");
+					$("[name=reduce]").effect("highlight", {color: "yellow"}, 1000).focus();
+					return false;
+				}
+				if ($("input[name=duration]").val().search(/std/i) >= 0 && $("input[name=interval]").val().search(/mly/i) >= 0 && $("input[name=season_start]").val().search(/-|,/) >= 0) {
+					alert("For monthly season-to-date, need to specify a season start as just a month");
+					$("[name=season_start]").effect("highlight", {color: "yellow"}, 1000).focus();
+					return false;
+				}
+				$("#add_elem").removeClass("makeRequired");
+				$('#elem_box').show();
+				$('input[name=elems]').val("").parent().parent().hide();
+				single_elem = {};
+				$('.elems_opts input').each(function () {
+					if (this.value.length > 0) {
+						if ($.isNumeric(this.value) && this.name !== "season_start") {
+							single_elem[this.name] = parseInt(this.value, 10);
+						} else {
+							single_elem[this.name] = this.value.replace(/\s/g, "").toLowerCase();
+						}
+					}
+				});
+				if (single_elem.season_start && single_elem.season_start.search(",") >= 0) {
+					single_elem.season_start = makeList(single_elem.season_start);
+				}
+				if (single_elem.interval && single_elem.interval.search(",") >= 0) {
+					single_elem.interval = makeList(single_elem.interval);
+				}
+				if (single_elem.groupby && single_elem.groupby.search(",") >= 0) {
+					combo_list = [];
+					$(single_elem.groupby.split(",")).each(function (i, e) {
+						combo_list.push(e);
+					});
+					single_elem.groupby = combo_list;
+				}
+				if (single_elem.reduce_add || single_elem.reduce_n || single_elem.reduce_maxmissing) {
+					single_elem.reduce = makeObject([["reduce", single_elem.reduce], ["add", single_elem.reduce_add],
+													 ["n", single_elem.reduce_n], ["run_maxmissing", single_elem.reduce_maxmissing]]);
+					delete single_elem.reduce_add;
+					delete single_elem.reduce_n;
+					delete single_elem.reduce_maxmissing;
+				}
+				if (single_elem.smry_add || single_elem.smry_n || single_elem.smry_maxmissing) {
+					single_elem.smry = makeObject([["reduce", single_elem.smry], ["add", single_elem.smry_add],
+												   ["n", single_elem.smry_n], ["run_maxmissing", single_elem.smry_maxmissing]]);
+					delete single_elem.smry_add;
+					delete single_elem.smry_n;
+					delete single_elem.smry_maxmissing;
+				}
+				if ($("textarea[name=elems_container]").val().length) {
+					elem_list = JSON.parse($("textarea[name=elems_container]").val());
+				} else {
+					elem_list = [];
+				}
+				elem_list.push(single_elem);
+				$("textarea[name=elems_container]").attr('rows', elem_list.length).val(JSON.stringify(elem_list));
+				$("input[name=interval]").attr("disabled", true).addClass("grayout");
+			});
+			$("#clear_elem").button().on("click", function () {
+				elem_list = [];
+				$("textarea[name=elems_container]").attr('rows', 1).val(elem_list);
+				$("input[name=interval]").attr("disabled", false).removeClass("grayout");
+			});
+			$(".oelem input").on("keydown", function (e) {
+				if (e.keyCode !== 9) {
+					$("#add_elem").addClass("makeRequired");
+				}
+			});
+			$("#singledate").on("change", function () {
+				if ($(this).is(':checked')) {
+					$("input[name=sdate]").parent().parent().children("th").text("Date:");
+					$("input[name=edate]").parent().parent().hide();
+				} else {
+					$("input[name=sdate]").parent().parent().children("th").text("Start Date:");
+					$("input[name=edate]").parent().parent().show();
+				}
+			});
+			$("input[name=elems]").on("keyup", function () {
+				if ($(this).val().search(",") >= 0 || $(this).val().length > 5) {
+					$(".oelem").hide();
+				} else {
+					$(".oelem").show();
+					$("input[name=season_start]").val("").parent().parent().hide();
+				}
+			});
+			$("input[name=name]").on({
+				focus: function () {
+					$("input[name=name]").val($("input[name=elems]").val());
+				},
+				keyup: function () {
+			    	if ($(this).val().length >= 3) {
+			    		if ($(this).val().search(/hdd/i) >= 0 || $(this).val().search(/cdd/i) >= 0 || $(this).val().search(/gdd/i) >= 0) {
+			    			$("input[name=base]").parent().parent().show();
+			    		} else {
+			    			$("input[name=base]").val("").parent().parent().hide();
+			    		}
+			    	} else if ($(this).val().length === 0) {
+			    		$("input[name=base]").val("").parent().parent().hide();
+			    	}
+			    }
+			});
+			$("input[name=smry]").on("keyup", function () {
+				if ($(this).val().length >= 1) {
+					$("input[name=smry_add]").parent().parent().fadeIn('fast');
+					$("input[name=smry_n]").parent().parent().fadeIn('fast');
+					$("input[name=smry_only]").parent().parent().fadeIn('fast');
+					if ($(this).val().length >= 3 && $(this).val().substr(0, 3).toLowerCase() === 'run') {
+						$("input[name=smry_maxmissing]").parent().parent().fadeIn('fast');
+					} else {
+						$("input[name=smry_maxmissing]").parent().parent().fadeOut('fast');
+					}
+				} else if ($(this).val().length === 0) {
+					$("input[name=smry_add]").val('').parent().parent().fadeOut('fast');
+					$("input[name=smry_n]").val('').parent().parent().fadeOut('fast');
+					$("input[name=smry_only]").val('').parent().parent().fadeOut('fast');
+					$("input[name=smry_maxmissing]").val('').parent().parent().fadeOut('fast');
+				}
+			});
+			$("input[name=reduce]").on("keyup", function () {
+				if ($(this).val().length >= 1) {
+					$("input[name=reduce_add]").parent().parent().fadeIn('fast');
+					if ($(this).val().length >= 3 && $(this).val().substr(0, 3).toLowerCase() === 'run') {
+						$("input[name=reduce_n]").parent().parent().fadeIn('fast');
+						$("input[name=reduce_maxmissing]").parent().parent().fadeIn('fast');
+					} else {
+						$("input[name=reduce_n]").parent().parent().fadeOut('fast');
+						$("input[name=reduce_maxmissing]").parent().parent().fadeOut('fast');
+					}
+				} else if ($(this).val().length === 0) {
+					$("input[name=reduce_add]").val('').parent().parent().fadeOut('fast');
+					$("input[name=reduce_n]").val('').parent().parent().fadeOut('fast');
+					$("input[name=reduce_maxmissing]").val('').parent().parent().fadeOut('fast');
+				}
+			});
+			$("input[name=interval]").on("keyup", function () {
+				if ($(this).val().length >= 3) {
+					if ($(this).val().search(/yly/i) >= 0) {
+						$("input[name=groupby]").val("").parent().parent().hide();
+					} else {
+						$("input[name=groupby]").parent().parent().show();
+					}
+				} else if ($(this).val().length === 0) {
+					$("input[name=groupby]").parent().parent().show();
+				}
+			});
+			$("input[name=duration]").on("keyup", function () {
+				if ($(this).val().length >= 3 || $.isNumeric($(this).val())) {
+					if ($(this).val().search(/std/i) >= 0) {
+						$("input[name=season_start]").addClass("makeRequired").parent().parent().show();
+					} else {
+						$("input[name=season_start]").removeClass("makeRequired").val("").parent().parent().hide();
+					}
+					if ($(this).val().search(/dly/i) >= 0 || ($(this).val() === "1" && $("input[name=interval]").val().search(/dly/i) >= 0)) {
+						$("input[name=reduce]").removeClass("makeRequired").val("").parent().parent().hide();
+						$("input[name=reduce_add]").val('').parent().parent().hide();
+						$("input[name=reduce_n]").val('').parent().parent().hide();
+						$("input[name=reduce_maxmissing]").val('').parent().parent().hide();
+						$("input[name=maxmissing]").val("").parent().parent().hide();
+						$("input[name=add]").parent().parent().show();
+					} else {
+						$("input[name=reduce]").addClass("makeRequired").parent().parent().show();
+						$("input[name=maxmissing]").parent().parent().show();
+						$("input[name=add]").val("").parent().parent().hide();
+					}
+				}
+			});
+		}
+		
+		function go_general() {
+			var areaname;
+			$("#prelimMsg").hide();
+			$("#specs").empty().append('<h2>Required input<\/h2>' +
+					'<table class="input_opts">' +
+						'<tr><th>Area:<td><select name="area">' +
+							'<option>state<\/option><option>county<\/option><option>climdiv<\/option><option>cwa<\/option><option>basin<\/option>' +
+						'<\/select><\/tr>' +
+						'<tr class="gqual"><td colspan=2><span style="font-style:italic;">Enter one of the following qualifiers<\/span><\/tr>' +
+						'<tr class="gqual"><th>State:<td><input type="text" name="state" size=11 \/><\/tr>' +
+						'<tr class="gqual"><th>ID:<td><input type="text" name="id" size=11 \/><\/tr>' +
+						'<tr class="gqual"><th>Bounding box:<td><input type="text" name="bbox" size=22 \/><\/tr>' +
+					'<\/table>' +
+					'<h2>Optional input<\/h2>' +
+					'<table class="input_opts">' +
+						'<tr><th>Meta options:<td><input type="text" name="meta" size=52 \/><\/tr>' +
+					'<\/table>' +
+					'<p><button id="request_submit" class="submitButton">Submit<\/button><\/p>');
+			$("#specs :input").addClass("ui-widget-content ui-corner-all ui-state-default");
+			$("#select[name=area]").addClass("ui-widget-content ui-corner-all ui-state-default");
+			$("#request_submit").button();
+			$(".gqual input").on("keyup", function () {
+				if ($(this).val().length) {
+					areaname = $(this).attr("name");
+					$(".gqual").each(function () {
+						if ($(this).find("input").attr("name") !== areaname) {
+							$(this).fadeOut('fast');
+						}
+					});
+				} else if ($(this).val().length === 0) {
+					$(".gqual").fadeIn('fast');
+				}
+			});
+			table_events("input", "bbox", "bbox_table");
+			table_events("input", "state", "state_table");
+			table_events("input", "meta", "general_table");
+		}
+		function go_multistndata() {
+			var areaname;
+			$("#prelimMsg").hide();
+			$("#specs").empty().append('<h2>Required input<\/h2>' +
+					'<table class="input_opts">' +
+						'<tr class="areatype"><td colspan=2><span style="font-style:italic;">(Enter id(s) for one of the following area types)<\/span><\/tr>' +
+						'<tr class="areatype"><th>County:<td><input type="text" name="county" size=22 \/><\/tr>' +
+						'<tr class="areatype"><th>Climate division:<td><input type="text" name="climdiv" size=22 \/><\/tr>' +
+						'<tr class="areatype"><th>CWA:<td><input type="text" name="cwa" size=22 \/><\/tr>' +
+						'<tr class="areatype"><th>Basin:<td><input type="text" name="basin" size=22 \/><\/tr>' +
+						'<tr class="areatype"><th>State:<td><input type="text" name="state" size=22 \/><\/tr>' +
+						'<tr class="areatype"><th>Bounding box:<td><input type="text" name="bbox" size=22 \/><\/tr>' +
+						'<tr class="areatype"><th>Station list:<td><input type="text" name="sids" size=22 \/><\/tr>' +
+						'<tr><th>Start Date:<td><input type="text" name="sdate" size=12 \/><input type="checkbox" id="singledate" \/>single date<\/tr>' +
+						'<tr><th>End Date:<td><input type="text" name="edate" size=12 \/><\/tr>' +
+						'<tr><th>Element name(s):<td><input type="text" name="elems" size=35 \/><\/tr>' +
+					'<\/table>' +
+					'<div id="elem_box" class="ui-helper-hidden">' +
+						'<span style="line-height:1.8em;font-weight:bold;">Elements:<\/span>' +
+						'<br \/><textarea name="elems_container" rows="1" cols="65" \/>' +
+					'<\/div>' +
+					'<h2 class="oelem">Optional element specifications<\/h2>' +
+					'<table class="oelem elems_opts">' +
+						'<tr><th>Name:<td><input type="text" name="name" size=12 \/><\/tr>' +
+						'<tr class="ui-helper-hidden"><th>Base:<td><input type="text" name="base" size=12 \/><\/tr>' +
+						'<tr><th>Interval:<td><input type="text" name="interval" size=12 \/><\/tr>' +
+						'<tr><th>Duration:<td><input type="text" name="duration" size=12 \/><\/tr>' +
+						'<tr class="ui-helper-hidden"><th>Season start:<td><input type="text" name="season_start" size=12 \/><\/tr>' +
+						'<tr class="ui-helper-hidden"><th>Add:<td><input type="text" name="add" size=12 \/><\/tr>' +
+						'<tr class="ui-helper-hidden"><th>Reduction:<td><input type="text" name="reduce" size=12 \/><\/tr>' +
+						'<tr class="ui-helper-hidden"><th style="padding-left:1em;">&bull; Add:<td><input type="text" name="reduce_add" size=12 \/><\/tr>' +
+						'<tr class="ui-helper-hidden"><th style="padding-left:1em;">&bull; Number:<td><input type="text" name="reduce_n" size=12 \/><\/tr>' +
+						'<tr class="ui-helper-hidden"><th style="padding-left:1em;">&bull; Run max miss:<td><input type="text" name="reduce_maxmissing" size=12 \/><\/tr>' +
+						'<tr class="ui-helper-hidden"><th>Max missing:<td><input type="text" name="maxmissing" size=12 \/><\/tr>' +
+						'<tr><th>Summary:<td><input type="text" name="smry" size=12 \/><\/tr>' +
+						'<tr class="ui-helper-hidden"><th style="padding-left:1em;">&bull; Add:<td><input type="text" name="smry_add" size=12 \/><\/tr>' +
+						'<tr class="ui-helper-hidden"><th style="padding-left:1em;">&bull; Smry number:<td><input type="text" name="smry_n" size=12 \/><\/tr>' +
+						'<tr class="ui-helper-hidden"><th style="padding-left:1em;">&bull; Run max miss:<td><input type="text" name="smry_maxmissing" size=12 \/><\/tr>' +
+						'<tr class="ui-helper-hidden"><th>Summary only:<td><input type="text" name="smry_only" size=12 \/><\/tr>' +
+						'<tr><th>Normal:<td><input type="text" name="normal" size=12 \/><\/tr>' +
+						'<tr><th>Precision:<td><input type="text" name="prec" size=12 \/><\/tr>' +
+						'<tr><td colspan=2 style="text-align:center;"><button id="add_elem">Add element<\/button><button id="clear_elem">Clear elements<\/button><\/tr>' +
+					'<\/table>' +
+					'<h2>Other optional input<\/h2>' +
+					'<table class="input_opts">' +
+						'<tr><th>Meta options:<td><input type="text" name="meta" size=52 \/><\/tr>' +
+						'<tr class="ui-helper-hidden"><th>Output option:<td><input type="text" name="output" size=12 \/><\/tr>' +
+					'<\/table>' +
+					'<p><button id="request_submit" class="submitButton">Submit<\/button><\/p>');
+			$("#specs :input").addClass("ui-widget-content ui-corner-all ui-state-default");
+			$("#request_submit").button();
+			add_element_interaction();
+			$(".areatype input").on("keyup", function () {
+				if ($(this).val().length) {
+					areaname = $(this).attr("name");
+					$(".areatype").each(function () {
+						if ($(this).find("input").attr("name") !== areaname) {
+							$(this).fadeOut('fast');
+						}
+					});
+					$(".areatype th").css("padding-left", "0em");
+				} else if ($(this).val().length === 0) {
+					$(".areatype th").css("padding-left", "1em");
+					$(".areatype").fadeIn('fast');
+				}
+			});
+			$("#singledate").on("change", function () {
+				if ($(this).is(':checked') && $("input[name=meta]").val().length === 0) {
+					$("input[name=output]").parent().parent().show();
+				} else {
+					$("input[name=output]").parent().parent().hide();
+				}
+			});
+			table_events("input", "bbox", "area_table");
+			table_events("input", "state", "area_table");
+			table_events("input", "meta", "meta_table");
+		}
+		function go_stndata() {
+			$("#prelimMsg").hide();
+			$("#specs").empty().append('<h2>Required input<\/h2>' +
+					'<table class="input_opts">' +
+						'<tr><th>Station id:<td><input type="text" name="sid" size=12 \/><\/tr>' +
+						'<tr><th>Start Date:<td><input type="text" name="sdate" size=12 \/><input type="checkbox" id="singledate" \/>single date<\/tr>' +
+						'<tr><th>End Date:<td><input type="text" name="edate" size=12 \/><\/tr>' +
+						'<tr><th>Element name(s):<td><input type="text" name="elems" size=35 \/><\/tr>' +
+					'<\/table>' +
+					'<div id="elem_box" class="ui-helper-hidden">' +
+						'<span style="line-height:1.8em;font-weight:bold;">Elements:<\/span>' +
+						'<br \/><textarea name="elems_container" rows="1" cols="65" \/>' +
+					'<\/div>' +
+					'<h2 class="oelem">Optional element specifications<\/h2>' +
+					'<table class="oelem elems_opts">' +
+						'<tr><th>Name:<td><input type="text" name="name" size=12 \/><\/tr>' +
+						'<tr class="ui-helper-hidden"><th>Base:<td><input type="text" name="base" size=12 \/><\/tr>' +
+						'<tr><th>Interval:<td><input type="text" name="interval" size=12 \/><\/tr>' +
+						'<tr><th>Duration:<td><input type="text" name="duration" size=12 \/><\/tr>' +
+						'<tr class="ui-helper-hidden"><th>Season start:<td><input type="text" name="season_start" size=12 \/><\/tr>' +
+						'<tr class="ui-helper-hidden"><th>Add:<td><input type="text" name="add" size=12 \/><\/tr>' +
+						'<tr class="ui-helper-hidden"><th>Reduction:<td><input type="text" name="reduce" size=12 \/><\/tr>' +
+						'<tr class="ui-helper-hidden"><th style="padding-left:1em;">&bull; Add:<td><input type="text" name="reduce_add" size=12 \/><\/tr>' +
+						'<tr class="ui-helper-hidden"><th style="padding-left:1em;">&bull; Number:<td><input type="text" name="reduce_n" size=12 \/><\/tr>' +
+						'<tr class="ui-helper-hidden"><th style="padding-left:1em;">&bull; Run max miss:<td><input type="text" name="reduce_maxmissing" size=12 \/><\/tr>' +
+						'<tr class="ui-helper-hidden"><th>Max missing:<td><input type="text" name="maxmissing" size=12 \/><\/tr>' +
+						'<tr><th>Summary:<td><input type="text" name="smry" size=12 \/><\/tr>' +
+						'<tr class="ui-helper-hidden"><th style="padding-left:1em;">&bull; Add:<td><input type="text" name="smry_add" size=12 \/><\/tr>' +
+						'<tr class="ui-helper-hidden"><th style="padding-left:1em;">&bull; Smry number:<td><input type="text" name="smry_n" size=12 \/><\/tr>' +
+						'<tr class="ui-helper-hidden"><th style="padding-left:1em;">&bull; Run max miss:<td><input type="text" name="smry_maxmissing" size=12 \/><\/tr>' +
+						'<tr class="ui-helper-hidden"><th>Summary only:<td><input type="text" name="smry_only" size=12 \/><\/tr>' +
+						'<tr><th>Normal:<td><input type="text" name="normal" size=12 \/><\/tr>' +
+						'<tr><th>Group by:<td><input type="text" name="groupby" size=12 \/><\/tr>' +
+						'<tr><th>Precision:<td><input type="text" name="prec" size=12 \/><\/tr>' +
+						'<tr><td colspan=2 style="text-align:center;"><button id="add_elem">Add element<\/button><button id="clear_elem">Clear elements<\/button><\/tr>' +
+					'<\/table>' +
+					'<h2>Other optional input<\/h2>' +
+					'<table class="input_opts">' +
+						'<tr><th>Meta options:<td><input type="text" name="meta" size=52 \/><\/tr>' +
+						'<tr><th>Output option:<td><input type="text" name="output" size=12 \/><\/tr>' +
+					'<\/table>' +
+					'<p><button id="request_submit" class="submitButton">Submit<\/button><\/p>');
+			$("#specs :input").addClass("ui-widget-content ui-corner-all ui-state-default");
+			$("#request_submit").button();
+			add_element_interaction();
+			table_events("input", "meta", "meta_table");
+		}
+		function go_stnmeta() {
+			var others;
+			$("#prelimMsg").hide();
+			$("#specs").empty().append('<h2>Required input<\/h2>' +
+					'<table class="input_opts" style="margin-top:8px;">' +
+						'<tr class="mmeta"><td colspan=2><span style="font-style:italic;">(Enter one or more of the following)<\/span><\/tr>' +
+						'<tr><th>Station id(s):<td><input type="text" name="sids" size=22 \/><\/tr>' +
+						'<tr class="mmeta"><th>County:<td><input type="text" name="county" size=22 \/><\/tr>' +
+						'<tr class="mmeta"><th>Climate division:<td><input type="text" name="climdiv" size=22 \/><\/tr>' +
+						'<tr class="mmeta"><th>CWA:<td><input type="text" name="cwa" size=22 \/><\/tr>' +
+						'<tr class="mmeta"><th>Basin:<td><input type="text" name="basin" size=22 \/><\/tr>' +
+						'<tr class="mmeta"><th>State:<td><input type="text" name="state" size=22 \/><\/tr>' +
+						'<tr class="mmeta"><th>Bounding box:<td><input type="text" name="bbox" size=22 \/><\/tr>' +
+					'<\/table>' +
+					'<h2>Optional input<\/h2>' +
+					'<table class="input_opts">' +
+						'<tr><th>Meta options:<td><input type="text" name="meta" size=52 \/><\/tr>' +
+						'<tr class="ometa"><th>Elements:<td><input type="text" name="elems" size=52 \/><\/tr>' +
+						'<tr class="ometa"><th>Start Date:<td><input type="text" name="sdate" size=12 \/><input type="checkbox" id="singledate" \/>single date<\/tr>' +
+						'<tr class="ometa"><th>End Date:<td><input type="text" name="edate" size=12 \/><\/tr>' +
+						'<tr><th>Output option:<td><input type="text" name="output" size=12 \/><\/tr>' +
+					'<\/table>' +
+					'<p><button id="request_submit" class="submitButton">Submit<\/button><\/p>');
+			$("#specs :input").addClass("ui-widget-content ui-corner-all ui-state-default");
+			$("#request_submit").button();
+			$(".ometa").hide();
+			$(".mmeta input").on("keyup", function () {
+				if ($(this).val().length) {
+					$("input[name=sids]").parent().parent().fadeOut('fast');
+					$(".ometa").show();
+				} else {
+					others = 0;
+					$(".mmeta input").each(function (i, j) {
+						others += j.value.length;
+					});
+					if (!others) {
+						$("input[name=sids]").parent().parent().fadeIn('fast');
+						$(".ometa").hide();
+					}
+				}
+			});
+			$("input[name=sids]").on("keyup", function () {
+				if ($(this).val().length) {
+					$(".mmeta").fadeOut('fast');
+				} else {
+					$(".mmeta").fadeIn('fast');
+				}
+			});
+			$("input[name=meta]").on("keyup", function () {
+				if ($(this).val().length) {
+					$("input[name=output]").parent().parent().fadeOut('fast');
+				} else {
+					$("input[name=output]").parent().parent().fadeIn('fast');
+				}
+				if ($(this).val().search(/valid_daterange/i) >= 0) {
+					$("input[name=elems]").addClass("makeRequired").parent().parent().show();
+				} else if ($("input[name=sids]").val().length) {
+					$("input[name=elems]").removeClass("makeRequired").parent().parent().hide();
+				}
+			});
+			$("#singledate").on("change", function () {
+				if ($(this).is(':checked')) {
+					$("input[name=sdate]").parent().parent().children("th").text("Date:");
+					$("input[name=edate]").parent().parent().hide();
+				} else {
+					$("input[name=sdate]").parent().parent().children("th").text("Start Date:");
+					$("input[name=edate]").parent().parent().show();
+				}
+			});
+			table_events("input", "bbox", "area_table");
+			table_events("input", "state", "area_table");
+			table_events("input", "meta", "meta_table");
+		}
+		function go_griddata() {
+			var areaname, hwchoice;
+			$("#prelimMsg").show();
+			$("#specs").empty().append('<h2>Required input<\/h2>' +
+					'<table class="input_opts">' +
+						'<tr class="areatype"><td colspan=2><span style="font-style:italic;">(Enter information for one of the following grid selection types)<\/span><\/tr>' +
+						'<tr class="areatype"><th>Point location:<td><input type="text" name="loc" size=22 \/><\/tr>' +
+						'<tr class="areatype"><th>State:<td><input type="text" name="state" size=22 \/><\/tr>' +
+						'<tr class="areatype"><th>Bounding box:<td><input type="text" name="bbox" size=22 \/><\/tr>' +
+						'<tr><th>Start Date:<td><input type="text" name="sdate" size=12 \/><input type="checkbox" id="singledate" \/>single date<\/tr>' +
+						'<tr><th>End Date:<td><input type="text" name="edate" size=12 \/><\/tr>' +
+						'<tr><th>Grid id:<td><input type="text" name="grid" size=12 \/><\/tr>' +
+						'<tr><th>Element name(s):<td><input type="text" name="elems" size=35 \/><\/tr>' +
+					'<\/table>' +
+					'<div id="elem_box" class="ui-helper-hidden">' +
+						'<span style="line-height:1.8em;font-weight:bold;">Elements:<\/span>' +
+						'<br \/><textarea name="elems_container" rows="1" cols="65" \/>' +
+					'<\/div>' +
+					'<h2 class="oelem">Optional element specifications<\/h2>' +
+					'<table class="oelem elems_opts">' +
+						'<tr><th>Name:<td><input type="text" name="name" size=12 \/><\/tr>' +
+						'<tr class="ui-helper-hidden"><th>Base:<td><input type="text" name="base" size=12 \/><\/tr>' +
+						'<tr><th>Interval:<td><input type="text" name="interval" size=12 \/><\/tr>' +
+						'<tr><th>Duration:<td><input type="text" name="duration" size=12 \/><\/tr>' +
+						'<tr class="ui-helper-hidden"><th>Season start:<td><input type="text" name="season_start" size=12 \/><\/tr>' +
+						'<tr class="ui-helper-hidden"><th>Reduction:<td><input type="text" name="reduce" size=12 \/><\/tr>' +
+						'<tr class="ui-helper-hidden"><th>Max missing:<td><input type="text" name="maxmissing" size=12 \/><\/tr>' +
+						'<tr><th>Summary:<td><input type="text" name="smry" size=12 \/><\/tr>' +
+						'<tr class="ui-helper-hidden"><th>Summary only:<td><input type="text" name="smry_only" size=12 \/><\/tr>' +
+						'<tr><th>Units:<td><input type="text" name="units" size=12 \/><\/tr>' +
+						'<tr><th>Area reduction:<td><input type="text" name="area_reduce" size=12 \/><\/tr>' +
+						'<tr><td colspan=2 style="text-align:center;"><button id="add_elem">Add element<\/button><button id="clear_elem">Clear elements<\/button><\/tr>' +
+					'<\/table>' +
+					'<h2>Other optional input<\/h2>' +
+					'<table class="input_opts">' +
+						'<tr><th>Meta options:<td><input type="text" name="meta" size=12 \/><\/tr>' +
+						'<tr><th>Output option:<td><input type="text" name="output" size=12 \/><\/tr>' +
+						'<tr><th>Generate map: <input type="checkbox" id="showimgopts" \/><\/tr>' +
+						'<tr class="ui-helper-hidden image_opts"><th style="padding-left:1em;">&bull; Info only:<td><input type="text" name="info_only" size=12" \/><\/tr>' +
+						'<tr class="ui-helper-hidden image_opts"><th style="padding-left:1em;">&bull; Proj:<td><input type="text" name="proj" size=12 value="lcc" \/><\/tr>' +
+						'<tr class="ui-helper-hidden image_opts"><th style="padding-left:1em;">&bull; Overlays:<td><input type="text" name="overlays" size=12 value="state" \/><\/tr>' +
+						'<tr class="ui-helper-hidden image_opts"><th style="padding-left:1em;">&bull; Interp:<td><input type="text" name="interp" size=12 value="cspline" \/><\/tr>' +
+						'<tr class="ui-helper-hidden image_opts"><th style="padding-left:1em;">&bull; Cmap:<td><input type="text" name="cmap" size=12 value="Blues" \/><\/tr>' +
+						'<tr class="ui-helper-hidden image_opts image-size"><th style="padding-left:1em;">&bull; Width:<td><input type="text" name="width" size=12 value=350 \/><\/tr>' +
+						'<tr class="ui-helper-hidden image_opts image-size"><th style="padding-left:1em;">&bull; Height:<td><input type="text" name="height" size=12 \/><\/tr>' +
+						'<tr class="ui-helper-hidden image_opts"><th style="padding-left:1em;">&bull; Levels:<td><input type="text" name="levels" size=22 \/><\/tr>' +
+					'<\/table>' +
+					'<p><button id="request_submit" class="submitButton">Submit<\/button><\/p>');
+			$("#specs :input").addClass("ui-widget-content ui-corner-all ui-state-default");
+			$("#request_submit").button();
+			add_element_interaction();
+			$(".areatype input").on("keyup", function () {
+				if ($(this).val().length >= 1 && $(".areatype :visible").length > 3) {
+					areaname = $(this).attr("name");
+					$(".areatype").each(function () {
+						if ($(this).find("input").attr("name") !== areaname) {
+							$(this).fadeOut('fast');
+						}
+					});
+					if (areaname === 'loc') {
+						$("input[name=area_reduce]").val("").parent().parent().fadeOut('fast');
+					} else {
+						$("input[name=area_reduce]").parent().parent().fadeIn('fast');
+					}
+					$(".areatype th").css("padding-left", "0em");
+				} else if ($(this).val().length === 0) {
+					$(".areatype th").css("padding-left", "1em");
+					$(".areatype").fadeIn('fast');
+				}
+			});
+			$("input[name=output]").on("keyup", function () {
+				var checked = $("#showimgopts").attr("checked");
+				if ($(this).val().length >= 3 && $(this).val().search(/image/i) === 0) {
+					if (checked !== "checked") {
+						$("#showimgopts").trigger("click");
+					}
+				} else if ($(this).val().length === 0) {
+					if (checked === "checked") {
+						$("#showimgopts").trigger("click");
+					}
+				}
+			});
+			$("#showimgopts").on("change", function () {
+				if ($(this).is(':checked')) {
+					$(".image_opts").fadeIn('fast');
+					if ($("input[name=output]").val().search(/image/i) === 0) {
+						$("input[name=info_only]").parent().parent().hide();
+					}
+				} else {
+					$(".image_opts").fadeOut('fast');
+				}
+			});
+			$(".image-size input").on("keyup", function () {
+				if ($(this).val().length >= 1) {
+					hwchoice = $(this).attr("name");
+					$(".image-size").each(function () {
+						if ($(this).find("input").attr("name") !== hwchoice) {
+							$(this).fadeOut('fast').find("input").val("");
+						}
+					});
+				} else if ($(this).val().length === 0) {
+					$(".image-size").fadeIn('fast');
+				}
+			});
+			table_events("input", "bbox", "bbox_table");
+			table_events("input", "state", "state_table");
+			table_events("input", "meta", "grid_meta_table");
+		}
+		$(function () {
+			$('<div id="wstypebar"><\/div>')
+				.appendTo("#builder")
+				.buttonBar({
+					barName: "wstype",
+					barOrient: "horizontal",
+					buttonInfo: [["stnmeta_button", "StnMeta"], ["stndata_button", "StnData"], ["multistndata_button", "MultiStnData"], ["griddata_button", "GridData"], ["general_button", "General"]],
+					buttonDefault: "stnmeta_button"
+				});
+			$("#wstype input").on("click", function () {
+				$(".codes").parent().hide();
+				$("#output").hide();
+			});
+			$("#stnmeta_button").val("StnMeta").on("click", go_stnmeta).click();
+			$("#stndata_button").val("StnData").on("click", go_stndata);
+			$("#multistndata_button").val("MultiStnData").on("click", go_multistndata);
+			$("#griddata_button").val("GridData").on("click", go_griddata);
+			$("#general_button").val("General/").on("click", go_general);
+			$("#builder").append('<div id="prelimMsg" class="ui-helper-hidden">... Preliminary Release - subject to change based on feedback ...</div>');
+			$("#infoDialog").dialog({
+				autoOpen: false,
+				modal: true,
+				show: true,
+				hide: true,
+				position: "center",
+				width: "auto"
+			});
+			$("#request_submit").live("click", collect_data);
+			$(".makeRequired").live("change", function () {
+				$(this).removeClass("makeRequired");
+			});
+			$(".codes").live("click", function () {
+				$("#infoDialog").dialog("option", "title", $(this).find('caption').text()).html($(this).parent().html()).dialog('open');
+				$("#infoDialog caption").remove();
+			});
+			// setup all events for all the tables (except bbox, state and meta, which differ between General and others)
+			table_events("input", "add", "add_table");
+			table_events("input", "basin", "area_table");
+			table_events("input", "climdiv", "area_table");
+			table_events("input", "county", "area_table");
+			table_events("input", "cwa", "area_table");
+			table_events("input", "duration", "duration_table");
+			table_events("input", "edate", "date_table");
+			table_events("input", "elems", "elems_table");
+			table_events("input", "id", "general_table");
+			table_events("input", "interval", "interval_table");
+			table_events("input", "maxmissing", "maxmissing_table");
+			table_events("input", "name", "elems_table");
+			table_events("input", "normal", "normal_table");
+			table_events("input", "output", "output_table");
+			table_events("input", "prec", "prec_table");
+			table_events("input", "reduce", "reduce_table");
+			table_events("input", "reduce_add", "reduce-smry_add_table");
+			table_events("input", "reduce_n", "reduce-smry_n_table");
+			table_events("input", "reduce_maxmissing", "reduce-smry_maxmissing_table");
+			table_events("input", "sdate", "date_table");
+			table_events("input", "season_start", "season_start_table");
+			table_events("input", "sid", "sid_table");
+			table_events("input", "sids", "sid_table");
+			table_events("input", "smry", "smry_table");
+			table_events("input", "smry_add", "reduce-smry_add_table");
+			table_events("input", "smry_only", "smry_only_table");
+			table_events("input", "smry_n", "reduce-smry_n_table");
+			table_events("input", "smry_maxmissing", "reduce-smry_maxmissing_table");
+			table_events("select", "area", "general_table");
+			table_events("textarea", "elems_container", "elems_keys_table");
+			table_events("input", "grid", "grid_table");
+			table_events("input", "loc", "loc_table");
+			table_events("input", "area_reduce", "area_reduce_table");
+			table_events("input", "type", "type_table");
+			table_events("input", "info_only", "info_only_table");
+			table_events("input", "proj", "proj_table");
+			table_events("input", "overlays", "overlays_table");
+			table_events("input", "interp", "interp_table");
+			table_events("input", "cmap", "cmap_table");
+			table_events("input", "width", "width_height_table");
+			table_events("input", "height", "width_height_table");
+			table_events("input", "levels", "levels_table");
+			table_events("input", "groupby", "groupby_table");
+			table_events("input", "units", "units_table");
+			// Ajax error handling
+			$.ajaxSetup({
+				error: function (x, e) {
+					if (x.status === 0) {
+						$("#jresults").empty().html("<pre>You are offline - check your network.<\/pre>");
+					} else if (x.status === 404) {
+						$("#jresults").empty().html("<pre>Requested URL not found.<\/pre>");
+					} else if (x.status === 500) {
+						$("#jresults").empty().html("<pre>Internal Server Error.<\/pre>");
+					} else if (e === "parsererror") {
+						$("#jresults").empty().html("<pre>Error parsing JSON response.<\/pre>");
+					} else if (e === "timeout") {
+						$("#jresults").empty().html("<pre>Request timed out<\/pre>.");
+					} else {
+						$("#jresults").empty().html("<pre>Error: " + x.responseText + "<\/pre>");
+					}
+				}
+			});
+		});
+	</script>
+  </head>
+
+<body>
+<div class="pagecontainer">
+<h2 style="margin-bottom:0px;">ACIS Query Builder</h2>
+<div id="builder"></div>
+<div id="allspecs">
+<div id="specs"></div>
+
+<!-- <hr /> -->
+<div id="sid_table">
+	<table class="codes">
+	<caption>Station Id Types</caption>
+	<tr><th>Type <th>Code <th>Description <th>Example</tr>
+	<tr><td>WBAN <td>1 <td>5-digit WBAN id <td>14742</tr>
+	<tr><td>COOP <td>2 <td>6-digit COOP id <td>304174</tr>
+	<tr><td>FAA  <td>3 <td>3-character FAA id <td>LAX</tr>
+	<tr><td>WMO  <td>4 <td>5-digit WMO id <td>72223</tr>
+	<tr><td>ICAO <td>5 <td>4-character ICAO id <td>KGRR</tr>
+	<tr><td>GHCN <td>6 <td>11-character GHCN id <td>USW00003927</tr>
+	<tr><td>NWSLI<td>7 <td>5-character NWSLI <td>AURN6</tr>
+	<tr><td>RCC  <td>8 <td>RCC local id <td>301402</tr>
+	<tr><td>ThreadEx <td>9 <td>6-character ThreadEx id <td>HSVthr</tr>
+	<tr><td>CoCoRaHS <td>10 <td>8-character CoCoRaHS id <td>NYTM0004</tr>
+<!-- 
+	<tr><td>16 <td>AWDN <td>7-character HPRCC AWDN id <td>a250059</tr>
+ -->
+	</table>
+</div>
+
+<div id="elems_table">
+	<table class="codes">
+	<caption>Common Element Codes</caption>
+	<tr><th>Abbreviation <th>Var Major <th>Description</tr>
+	<tr><td>maxt <td>1  <td>Maximum temperature </tr>
+	<tr><td>mint <td>2  <td>Minimum temperature </tr>
+	<tr><td>avgt <td>43 <td>Average temperature </tr>
+	<tr><td>obst <td>3  <td>Obs time temperature </tr>
+	<tr><td>pcpn <td>4  <td>Precipitation </tr>
+	<tr><td>snow <td>10 <td>Snowfall </tr>
+	<tr><td>snwd <td>11 <td>Snow Depth </tr>
+	<tr><td>     <td>7  <td>Pan evap (inches) </tr>
+	<tr><td>cdd  <td>44 <td>Degree days above base (CDD) (default base 65) </tr>
+	<tr><td>hdd  <td>45 <td>Degree days below base (HDD) (default base 65) </tr>
+	<tr><td>gdd  <td>-  <td>Growing Degree Days (base 50) </tr>
+	<tr><td>cddXX<td>-  <td>Cooling Degree Days; where XX is base temperature </tr>
+	<tr><td>hddXX<td>-  <td>Heating Degree Days; where XX is base temperature </tr>
+	<tr><td>gddXX<td>-  <td>Growing Degree Days; where XX is base temperature </tr>
+	<tfoot>
+	<tr><td colspan=3>Degree days can also be specified within an <code>elems</code>
+	object with the keys "name" (or "vX") and "base".</tr>
+	</tfoot>
+	</table>
+</div>
+
+<div id="meta_table">
+	<table class="codes">
+	<caption>Meta Options</caption>
+	<tr><th>Code  <th>Description </tr>
+	<tr><td>name  <td>Station name  </tr>
+	<tr><td>state <td>2-letter state abbrev </tr>
+	<tr><td>sids  <td>Array of station ids/types </tr>
+	<tr><td>ll    <td>Longitude and latitude </tr>
+	<tr><td>elev  <td>Elevation </tr>
+	<tr><td>uid   <td>ACIS id </tr>
+	<tr><td>county<td>5-digit FIPS id </tr>
+	<tr><td>climdiv<td>4-character climate division id </tr>
+	<tr><td>valid_daterange   <td>Valid date range (by variable) </tr>
+	</table>
+</div>
+
+<div id="grid_meta_table">
+	<table class="codes">
+	<caption>Meta Options</caption>
+	<tr><th>Code  <th>Description </tr>
+	<tr><td>ll    <td>Longitude and latitude of grid points </tr>
+	<tr><td>elev  <td>Elevation of grid points </tr>
+	</table>
+</div>
+
+<div id="reduce-smry_add_table">
+	<table class="codes">
+	<caption>Reduction/Summary Add Codes</caption>
+	<thead>
+	<tr><th>Code  <th>Description</tr>
+	</thead>
+	<tbody>
+	<tr><td>mcnt  <td>Count of missing values in the reduction period </tr>
+	<tr><td>date  <td>Date of occurrence (for max, min, run) </tr>
+	<tr><td>value  <td>Value on date of occurrence (for first and last) </tr>
+	<tr><td>rmcnt  <td>Count of missing values in the run period (for run only)</tr>
+	</tbody>
+	</table>
+</div>
+
+<div id="smry_only_table">
+	<table class="codes">
+	<caption>Summary Only</caption>
+	<thead>
+	<tr><th>Code  <th>Description</tr>
+	</thead>
+	<tbody>
+	<tr><td>1  <td>Return only the summary value (no intermediate results). If used, must be specified for each element.</tr>
+	</tbody>
+	</table>
+</div>
+
+<div id="reduce-smry_n_table">
+	<table class="codes">
+	<caption>Reduction/Summary Number</caption>
+	<thead>
+	<tr><th>Value  <th>Description</tr>
+	</thead>
+	<tbody>
+	<tr><td><i>integer</i>  <td>Used with "run" reduction to specify max number of results returned per interval. </tr>
+	</tbody>
+	</table>
+</div>
+
+<div id="reduce-smry_maxmissing_table">
+	<table class="codes">
+	<caption>Reduction/Summary Run Max Missing</caption>
+	<thead>
+	<tr><th>Value  <th>Description</tr>
+	</thead>
+	<tbody>
+	<tr><td><i>integer</i>  <td>Used with "run" reduction to specify max number of missing days to allow before terminating run. </tr>
+	</tbody>
+	</table>
+</div>
+
+<div id="add_table">
+	<table class="codes">
+	<caption>Additions Codes</caption>
+	<thead>
+	<tr><th>Code  <th>Description</tr>
+	</thead>
+	<tbody>
+	<tr><td>f <td>Flags </tr>
+	<tr><td>t <td>Time of observation </tr>
+	<tr><td>i <td>Station ID associated with data </tr>
+	<tr><td>v <td>Var minor associated with data </tr>
+	<tr><td>n <td>Network associated with data </tr>
+	</tbody>
+	</table>
+</div>
+
+<div id="normal_table">
+	<table class="codes">
+	<caption>Normals Codes</caption>
+	<thead>
+	<tr><th>Code  <th>Description</tr>
+	</thead>
+	<tbody>
+	<tr><td>1 <td>Display normals </tr>
+	<tr><td>departure <td>Display departure from normal </tr>
+	<tr><td colspan="2">Normals are for the period 1981-2010 </tr>
+	</tbody>
+	</table>
+</div>
+
+<div id="interval_table">
+	<table class="codes">
+	<caption>Interval Options</caption>
+	<tr><th>Code <th>Description</tr>
+	<tr><td>dly <td>results have daily time step </tr>
+	<tr><td>mly <td>results have monthly time step </tr>
+	<tr><td>yly <td>results have yearly time step </tr>
+	<tr><td><i>list</i> <td>documentation forthcoming </tr>
+	</table>
+</div>
+
+<div id="duration_table">
+	<table class="codes">
+	<caption>Duration Options</caption>
+	<tr><th>Code <th>Description <th>Valid with intervals</tr>
+	<tr><td>dly <td>daily <td>dly </tr>
+	<tr><td>mly <td>monthly <td>mly </tr>
+	<tr><td>yly <td>yearly <td>yly </tr>
+	<tr><td>mtd <td>month-to-date <td>dly </tr>
+	<tr><td>ytd <td>year-to-date <td>dly, mly </tr>
+	<tr><td>std <td>season-to-date <td>dly, mly </tr>
+	<tr><td><i>integer</i> <td>length of data to be analyzed in units specified in interval <td>dly, mly, yly </tr>
+	<tr><td colspan=3 style="text-align:center;">Advanced options will be described in documentation. </tr>
+	</table>
+</div>
+
+<div id="reduce_table">
+	<table class="codes">
+	<caption>Reduction Types</caption>
+	<thead>
+	<tr><th>Code  <th>Description</tr>
+	</thead>
+	<tbody>
+	<tr><td>max  <td>Maximum value for the period </tr>
+	<tr><td>min  <td>Minimum value for the period </tr>
+	<tr><td>sum  <td>Sum of the values for the period </tr>
+	<tr><td>mean <td>Average of the values for the period </tr>
+    <tr><td>stdev <td>Standard deviation of the values (GridData only) </tr>
+	<tr><td>cnt_xx_yyy <td>Count of number of daily values exceeding threshold </tr>
+	<tr><td>pct_xx_yyy <td>Percent (integer) of daily values exceeding threshold </tr>
+	<tr><td>fct_xx_yyy <td>Fraction (float) of daily values exceeding threshold </tr>
+	<tr><td>first_xx_yyy <td>First occurrence of daily value exceeding threshold </tr>
+	<tr><td>last_xx_yyy <td>Last occurrence of daily value exceeding threshold </tr>
+	<tr><td>run_xx_yyy <td>Consecutive daily values exceeding threshold </tr>
+	<tr><td> <td>xx is operator (ge, gt, le, lt, eq, ne)<br />
+			yyy is threshold (integer or floating point)<br ?>
+			Examples: cnt_ge_0.01, pct_eq_100</tr>
+	</tbody>
+	</table>
+</div>
+
+<div id="smry_table">
+	<table class="codes">
+	<caption>Column Summary Types</caption>
+	<thead>
+	<tr><th>Code  <th>Description</tr>
+	</thead>
+	<tbody>
+	<tr><td>max  <td>Maximum value for the column </tr>
+	<tr><td>min  <td>Minimum value for the column </tr>
+	<tr><td>sum  <td>Sum of values in the column </tr>
+	<tr><td>mean <td>Average of values in the column </tr>
+	<tr><td>cnt_xx_yyy <td>Count of number of values in column exceeding threshold </tr>
+	<tr><td>pct_xx_yyy <td>Percent (integer) of values in column exceeding threshold </tr>
+	<tr><td>fct_xx_yyy <td>Fraction (float) of values in columnn exceeding threshold </tr>
+	<tr><td>run_xx_yyy <td>Consecutive column values exceeding threshold </tr>
+	<tr><td> <td>xx is operator (ge, gt, le, lt, eq, ne)<br />
+			yyy is threshold (integer or floating point)<br ?>
+			Examples: cnt_ge_0.01, pct_eq_100</tr>
+	<tr><td colspan=2 style="text-align:center;">More than one smry code can be specified. </tr>
+	</tbody>
+	</table>
+</div>
+
+<div id="season_start_table">
+	<table class="codes">
+	<caption>Season Start Description</caption>
+	<thead>
+	<tr><th>Description  <th>Examples</tr>
+	</thead>
+	<tbody>
+	<tr><td>For interval of dly - month and day <td>[12,21] or 06-20</tr>
+	<tr><td>For interval of mly - just month  <td>3 </tr>
+	</tbody>
+	</table>
+</div>
+
+<div id="maxmissing_table">
+	<table class="codes">
+	<caption>Max Missing Option</caption>
+	<thead>
+	<tr><th>Description  </tr>
+	</thead>
+	<tbody>
+	<tr><td>Integer value indicating the number missing daily values to allow before a summary statistic is reported as missing.</tr>
+	</tbody>
+	</table>
+</div>
+
+<div id="prec_table">
+	<table class="codes">
+	<caption>Precision Option</caption>
+	<thead>
+	<tr><th>Description  </tr>
+	</thead>
+	<tbody>
+	<tr><td>Integer value indicating the number of decimal places of precision displayed in the results for this element.</tr>
+	</tbody>
+	</table>
+</div>
+
+<div id="elems_keys_table">
+	<table class="codes">
+	<caption>Elems Object Keywords</caption>
+	<tr><th>Keyword <th>Value <th>Examples</tr>
+	<tr><td>name     <td>Element code from table above   <td>maxt, pcpn </tr>
+	<tr><td>vX       <td>Var major or var major.minor   <td>1, 10.4 </tr>
+	<tr><td>vN       <td>Var minor (must also specify <code>vX</code>)  <td>4 </tr>
+	<tr><td>interval <td>dly (daily), mly (monthly) <td>mly </tr>
+	<tr><td>duration <td>dly (daily), mly (monthly), mtd (month-to-date), <br />std (season-to-date), ytd (year-to-date) <td>mtd </tr>
+	<tr><td>season_start <td>Season start date - only valid with duration of <code>std</code> <td>[12,21], 06-20 </tr>
+	<tr><td rowspan=2>reduce   <td>Reduction type from table above  <td>sum, mean </tr>
+	<tr><td>For cnt, pct or fct, append "_operator_threshold". <br>Valid operators are eq, le, lt, ge, gt, ne <td>cnt_lt_32, pct_ge_0.01 </tr>
+	<tr><td>add  <td>Additional information to be appended.<br />Valid operators are f, t, i, v, n <td>t, f </tr>
+	<tr><td>smry  <td>Column summary statistics <td>mean </tr>
+	<tr><td>normal  <td>Normals - valid options: 1 or normal_departure <td>1 </tr>
+	<tr><td>maxmissing  <td>Allowable number of missing values <td>5 </tr>
+	<tr><td>prec  <td>Precision of results (positive after decimal point; negative before) <td>3 </tr>
+	<tr style="color:gray;"><td>group_by <td>Planned - documentation when available<td> </tr>
+	</table>
+</div>
+
+<div id="output_table">
+	<table class="codes">
+	<caption>Output Options</caption>
+	<thead>
+	<tr><th>Code  <th>Description</tr>
+	</thead>
+	<tbody>
+	<tr><td>json  <td>JavaScript Object Notation (default) </tr>
+	<tr><td>csv  <td>Comma-Separated Values (unavailable for some requests, such as those including "add", "smry" or "meta" and MultiStnData requests for a day range)  </tr>
+	<tr><td>image  <td>png image only (only valid for GridData calls)</tr>
+	</tbody>
+	</table>
+</div>
+
+<div id="area_table">
+	<table class="codes">
+	<caption>Area Codes</caption>
+	<tr><th>Keyword  <th>Description <th>Examples</tr>
+	<tr><td>county   <td>County FIPS code <td>09001 </tr>
+	<tr><td>climdiv  <td>Climate division (2-digits or combined with state) <td>10, NY10 </tr>
+	<tr><td>cwa      <td>NWS County Warning Area <td>BOI </tr>
+	<tr><td>basin    <td>Drainage basin (8-digit HUC) <td>01080205 </tr>
+	<tr><td>state    <td>One or more 2-letter state postal abbreviations  <td>AK </tr>
+	<tr><td>bbox     <td>Bounding box in decimal degrees (W,S,E,N) <td>-90, 40, -88, 41</tr>
+	</table>
+</div>
+
+<div id="state_table">
+	<table class="codes">
+	<caption>State Description</caption>
+	<thead>
+	<tr><th>Description  <th>Examples</tr>
+	</thead>
+	<tbody>
+	<tr><td>One or more 2-letter state postal codes <td>MO, KS</tr>
+	</tbody>
+	</table>
+</div>
+
+<div id="general_table">
+	<table class="codes">
+	<caption>General Meta Keywords by Area</caption>
+	<tr><th>Area <th> ID Type <th>Available Meta Keywords</tr>
+	<tr><td>state    <td>Postal         <td>id, name, bbox, geojson, state</tr>
+	<tr><td>county   <td>FIPS           <td>id, name, bbox, geojson, state</tr>
+	<tr><td>climdiv  <td>Divison number <td>id, name, bbox, geojson, state</tr>
+	<tr><td>cwa      <td>NWS CWA        <td>id, name, bbox, geojson</tr>
+	<tr><td>basin    <td>8-digit HUC    <td>id, name, bbox, geojson</tr>
+	</table>
+</div>
+
+<div id="date_table">
+	<table class="codes">
+	<caption>Date Secifications</caption>
+	<tr><th>Options<th>Example</tr>
+	<tr><td>yyyy-mm-dd <td>2010-01-31 </tr>
+	<tr><td>yyyymmdd <td>20100131 </tr>
+	<tr><td>por (period of record) <td>por </tr>
+	<tr><td colspan=2>Sometimes only yyyy or yyyymm required.</tr>
+	</table>
+</div>
+
+<div id="bbox_table">
+	<table class="codes">
+	<caption>Bounding Box Format</caption>
+	<tr><th>Description <th>Example</tr>
+	<tr><td>Bounds in decimal degrees (W, S, E, N) <td>-90, 40, -88, 41</tr>
+	</table>
+</div>
+
+<div id="grid_table">
+	<table class="codes">
+	<caption>Grid Codes</caption>
+	<tr><th>Code <th>Description<th>Area<th>Period</tr>
+	<tr><td> 1<td>NRCC Interpolated<td>US<td>1950-present</tr>
+	<tr><td> 3<td>NRCC Hi-Res<td>East of Rockies<td>2011-present</tr>
+	<tr><td> 4-16<td>NARCCAP *<td>US<td>1970-2000, 2040-2070</tr>
+	<tr><td><td colspan=3>4: CRCM + NCEP (historical only)</tr>
+	<tr><td><td colspan=3>5: CRCM + CCSM</tr>
+	<tr><td><td colspan=3>6: CRCM + CGCM3</tr>
+	<tr><td><td colspan=3>7: HRM3 + NCEP (historical only)</tr>
+	<tr><td><td colspan=3>8: HRM3 + HadCM3</tr>
+	<tr><td><td colspan=3>9: MM5I + NCEP (historical only)</tr>
+	<tr><td><td colspan=3>10: MM5I + CCSM</tr>
+	<tr><td><td colspan=3>11: RCM3 + NCEP (historical only)</tr>
+	<tr><td><td colspan=3>12: RCM3 + CGCM3</tr>
+	<tr><td><td colspan=3>13: RCM3 + GFDL</tr>
+	<tr><td><td colspan=3>14: WRFG + NCEP (historical only)</tr>
+	<tr><td><td colspan=3>15: WRFG + CCSM</tr>
+	<tr><td><td colspan=3>16: WRFG + CGCM3</tr>
+	<tr><td colspan=4>* Be aware of idiosyncrasies before using this grid set.</tr>
+	</table>
+</div>
+
+<div id="loc_table">
+	<table class="codes">
+	<caption>Location Format</caption>
+	<tr><th>Description <th>Example</tr>
+	<tr><td>Point location defined in decimal degrees (longitude, latitude) <td>-77.7, 41.8</tr>
+	</table>
+</div>
+
+<div id="area_reduce_table">
+	<table class="codes">
+	<caption>Area Reduction Types</caption>
+	<thead>
+	<tr><th>Code  <th>Description</tr>
+	</thead>
+	<tbody>
+	<tr><td>aaaa_max  <td>Maximum grid value in area </tr>
+	<tr><td>aaaa_min  <td>Minimum grid value in area </tr>
+	<tr><td>aaaa_mean <td>Average of all grid values in the area </tr>
+	<tr><td>aaaa_pct_xx_yyy <td>Percent (integer) of area exceeding threshold </tr>
+	<tr><td>aaaa_fct_xx_yyy <td>Fraction (float) of area exceeding threshold </tr>
+	<tr><td> <td>aaaa is area type ("county", "climdiv", "basin", "state")<br />
+			xx is operator (ge, gt, le, lt, eq, ne)<br />
+			yyy is threshold (integer or floating point)<br ?>
+			Examples: county_max, cwa_pct_ge_100</tr>
+	</tbody>
+	</table>
+</div>
+
+<div id="groupby_table">
+	<table class="codes">
+	<caption>Group By Types</caption>
+	<thead>
+	<tr><th>Code  <th>Description</tr>
+	</thead>
+	<tbody>
+	<tr><td>year  <td>Results will be returned with all data for a year in a list. </tr>
+	<tr><td>year, mm-dd, mm-dd  <td>Results will be returned with all daily data between specified start date and end date in a list identified 
+	by ending year.</tr>
+	<tr><td>year, mm, mm  <td>Monthly summarized data will be returned for all months between specified start month and end month in a list identified 
+	by ending year.</tr>
+	</tbody>
+	</table>
+</div>
+
+<div id="units_table">
+    <table class="codes">
+	<caption>Units Codes</caption>
+	<thead>
+	<tr><th>Code <th>Description</tr>
+	</thead>
+	<tbody>
+    <tr><td>degreeC <td>Temperatures degrees C.</tr>
+    <tr><td>degreeF <td>Temperatures degrees F.</tr>
+    <tr><td>degreeK <td>Temperatures degrees K.</tr>
+    <tr><td>inch    <td>Precipitation inches.</tr>
+    <tr><td>mm      <td>Precipitation millimeters.</tr>
+	</tbody>
+	</table>
+</div>
+
+<div id="type_table">
+	<table class="codes">
+	<caption>Type Codes</caption>
+	<thead>
+	<tr><th>Code <th>Description</tr>
+	</thead>
+	<tbody>
+	<tr><td>png <td>png image </tr>
+	</tbody>
+	</table>
+</div>
+
+<div id="info_only_table">
+	<table class="codes">
+	<caption>Info Only Codes</caption>
+	<thead>
+	<tr><th>Code <th>Description</tr>
+	</thead>
+	<tbody>
+	<tr><td>1 <td>Only information about the map is returned, not png image </tr>
+	<tr><td>&nbsp;<td>If not specified, png image is returned in data portion of JSON object </tr>
+	</tbody>
+	</table>
+</div>
+
+<div id="proj_table">
+	<table class="codes">
+	<caption>Projection Types</caption>
+	<thead>
+	<tr><th>Code <th>Description</tr>
+	</thead>
+	<tbody>
+	<tr><td>lcc <td>Lambert conformal conic (default) </tr>
+	</tbody>
+	</table>
+</div>
+
+<div id="overlays_table">
+	<table class="codes">
+	<caption>Overlay Types</caption>
+	<thead>
+	<tr><th>Code <th>Description</tr>
+	</thead>
+	<tbody>
+	<tr><td>state  <td>State borders </tr>
+	<tr><td>county <td>County borders </tr>
+	<tr><td colspan=2>Line width and color can also be specified, separated by colons.<br />
+	                  For example, state:1:red</tr>
+	</tbody>
+	</table>
+</div>
+
+<div id="interp_table">
+	<table class="codes">
+	<caption>Interpolation Types</caption>
+	<thead>
+	<tr><th>Code <th>Description</tr>
+	</thead>
+	<tbody>
+	<tr><td>cspline <td>Cubic spline (default) </tr>
+	<tr><td>none <td>No interpolation </tr>
+	</tbody>
+	</table>
+</div>
+
+<div id="cmap_table">
+	<table class="codes">
+	<caption>Color Map Types</caption>
+	<thead>
+	<tr><th>Code <th>Description</tr>
+	</thead>
+	<tbody>
+	<tr><td>Blues <td>Shades of blue </tr>
+	<tr><td>Reds <td>Shades of red </tr>
+	<tr><td><i>etc.</i> <td>Other color maps as defined in <a href="http://matplotlib.sourceforge.net/mpl_examples/pylab_examples/show_colormaps.pdf">mapplotlib</a> </tr>
+	</tbody>
+	</table>
+</div>
+
+<div id="width_height_table">
+	<table class="codes">
+	<caption>Width and Height Specifications</caption>
+	<thead>
+	<tr><th>Code <th>Description</tr>
+	</thead>
+	<tbody>
+	<tr><td><i>integer</i> <td>Specify either width or height of png image in pixels; only specify one or the other.</tr>
+	</tbody>
+	</table>
+</div>
+
+<div id="levels_table">
+	<table class="codes">
+	<caption>Contour Level Specification</caption>
+	<thead>
+	<tr><th>Description<td>Example</tr>
+	</thead>
+	<tbody>
+	<tr><td>Comma-separated list of contour levels <td>0,5,10,15,20</tr>
+	<tr><td colspan=2 style="text-align:center;">Will be determined by server if not specified.</tr>
+	</tbody>
+	</table>
+</div>
+
+</div>
+
+<div id="output">
+	<h2 id="jparams_h2">Parameters (JSON)</h2>
+	<div id="jparams" contenteditable="true">Parameters will appear here.</div>
+	<h2 id="jresults_h2"><span>Results</span> <button id="formatButton" class="otherButtons ui-corner-all ui-state-default">Format</button></h2>
+	<div id="jresults">Results will appear here.</div>
+</div>
+<div style="clear:both;">
+<div id="infoDialog"> </div>
+</div>
+</body>
+</html>

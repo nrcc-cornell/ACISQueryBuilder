@@ -1,0 +1,23 @@
+h2					   { margin-top:10px; margin-bottom:10px; font-size:1.3em; color:#0000A0; }
+input			       { height:1.5em; margin-left:5px; }
+pre                    { white-space:pre-wrap; word-wrap:break-word; word-break:break-all; }
+button span            { font-size:75%; font-weight:600; padding: 1px 5px !important; line-height: 1.3em !important; }
+#wstype				   { font-size:80%; }
+#allspecs              { width:35%; float:left; }
+.input_opts            { border:0; border-collapse:collapse; }
+.elems_opts            { border:1px solid #C5DBEC; border-collapse:collapse; }
+.input_opts tr, .elems_opts tr  { height:1.8em; }
+.input_opts th, .elems_opts th  { text-align:left; } 
+.makeRequired          { background:lightgreen; }
+.areatype th           { padding-left:1em; }
+.grayout               { background:#F8F8F8; }
+#singledate, #showimgopts            { height:12px; }
+#output                { width:65%; float:left; display:none; }
+#jparams, #jresults    { border:1px solid black; }
+#jresults pre          { margin-bottom:4px; margin-top:4px; }
+#myparams              { width:99%; font-size:1em; font-family:monospace; }
+.otherButtons          { background-color:#D7EBF9; float:right; }
+ .codes                 { border:1px solid blue; border-collapse:collapse; border-spacing:0; background-color:#E0FFFF; margin:8px; }
+.codes td, .codes th   { border:1px solid blue; padding:1px 2px; font-size:90%; }
+#infoDialog td, #infoDialog th   { font-size:1.1em; padding:10px; text-align:left; }
+#prelimMsg			   { text-align:center; color:red; font-style:italic; margin-top:8px; }
