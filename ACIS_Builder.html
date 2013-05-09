@@ -19,6 +19,7 @@
 		</div>
 	</noscript>
 	<script type="text/javascript">
+		var serverUrl = window.location.hash.length > 1 ? "http://data." + window.location.hash.slice(1) + ".rcc-acis.org/" : "http://scacis.rcc-acis.org/virga";
 		function makeList(x) {
 			var l = [];
 			$(x.split(",")).each(function (i, e) {
@@ -52,7 +53,7 @@
 		}
 		function process_request(params) {
 			var args = JSON.stringify(params),
-				server = $("#wstype input:checked").val();
+				server = serverUrl + $("#wstype input:checked").val();
 			$("#jparams_h2").html('Parameters (JSON)');
 			$("#jparams").empty().html("<pre>" + args + "<\/pre>");
 			$("#jresults_h2 span").html('Results');
@@ -61,14 +62,14 @@
 			$("#output").show();
 			if (server.search("General") >= 0) {
 				server += $("select[name=area] :selected").text();
-				$("#jparams pre").prepend("Server=http://data.rcc-acis.org/General/" + $('select[name=area] :selected').text() + "&nbsp;&nbsp;&nbsp;params=");
+				$("#jparams pre").prepend("Server=/General/" + $('select[name=area] :selected').text() + "&nbsp;&nbsp;&nbsp;params=");
 			}
 			if (params.output && params.output.toLowerCase() === "image") {
 				$("#jresults_h2 span").html('Results (PNG)');
-				$("#jresults").empty().html("<img src='http://data.rcc-acis.org/GridData?params=" + args + "'><\/img>");
+				$("#jresults").empty().html("<img src='" + server + "?params=" + args + "'><\/img>");
 			} else {
 				// using proxy server to avoid cross domain problems
-				$.post("http://scacis.rcc-acis.org/virga" + server, {params: args}, function (res) {
+				$.post(server, {params: args}, function (res) {
 					if (params.output && params.output.toLowerCase() === "csv") {
 						$("#jresults_h2 span").html('Results (CSV)');
 						$("#jresults").empty().html("<pre>" + res + "<\/pre>");
@@ -98,7 +99,7 @@
 							}
 						});
 					}
-				});
+				},'json');
 			}
 			$("#jparams").one("keyup", function () {
 				if (server.search("General") < 0) {
@@ -185,8 +186,10 @@
 				if (single_elem.season_start && single_elem.season_start.search(",") >= 0) {
 					single_elem.season_start = makeList(single_elem.season_start);
 				}
-				if (single_elem.interval && single_elem.interval.search(",") >= 0) {
+				if (single_elem.interval && !$.isNumeric(single_elem.interva) && single_elem.interval.search(",") >= 0) {
 					single_elem.interval = makeList(single_elem.interval);
+				} else if (single_elem.interval && $.isNumeric(single_elem.interval)) {
+					single_elem.interval = [single_elem.interval];
 				}
 				if (single_elem.groupby && single_elem.groupby.search(",") >= 0) {
 					combo_list = [];
@@ -194,6 +197,13 @@
 						combo_list.push(e);
 					});
 					single_elem.groupby = combo_list;
+				}
+    			if (single_elem.smry && single_elem.smry.search(",") >= 0) {
+					combo_list = [];
+					$(single_elem.smry.split(",")).each(function (i, e) {
+						combo_list.push(e);
+					});
+					single_elem.smry = combo_list;
 				}
 				if (single_elem.reduce_add || single_elem.reduce_n || single_elem.reduce_maxmissing) {
 					single_elem.reduce = makeObject([["reduce", single_elem.reduce], ["add", single_elem.reduce_add],
@@ -330,7 +340,6 @@
 		
 		function go_general() {
 			var areaname;
-			$("#prelimMsg").hide();
 			$("#specs").empty().append('<h2>Required input<\/h2>' +
 					'<table class="input_opts">' +
 						'<tr><th>Area:<td><select name="area">' +
@@ -367,7 +376,6 @@
 		}
 		function go_multistndata() {
 			var areaname;
-			$("#prelimMsg").hide();
 			$("#specs").empty().append('<h2>Required input<\/h2>' +
 					'<table class="input_opts">' +
 						'<tr class="areatype"><td colspan=2><span style="font-style:italic;">(Enter id(s) for one of the following area types)<\/span><\/tr>' +
@@ -405,6 +413,7 @@
 						'<tr class="ui-helper-hidden"><th style="padding-left:1em;">&bull; Run max miss:<td><input type="text" name="smry_maxmissing" size=12 \/><\/tr>' +
 						'<tr class="ui-helper-hidden"><th>Summary only:<td><input type="text" name="smry_only" size=12 \/><\/tr>' +
 						'<tr><th>Normal:<td><input type="text" name="normal" size=12 \/><\/tr>' +
+						'<tr><th>Group by:<td><input type="text" name="groupby" size=12 \/><\/tr>' +
 						'<tr><th>Precision:<td><input type="text" name="prec" size=12 \/><\/tr>' +
 						'<tr><td colspan=2 style="text-align:center;"><button id="add_elem">Add element<\/button><button id="clear_elem">Clear elements<\/button><\/tr>' +
 					'<\/table>' +
@@ -443,7 +452,6 @@
 			table_events("input", "meta", "meta_table");
 		}
 		function go_stndata() {
-			$("#prelimMsg").hide();
 			$("#specs").empty().append('<h2>Required input<\/h2>' +
 					'<table class="input_opts">' +
 						'<tr><th>Station id:<td><input type="text" name="sid" size=12 \/><\/tr>' +
@@ -491,7 +499,6 @@
 		}
 		function go_stnmeta() {
 			var others;
-			$("#prelimMsg").hide();
 			$("#specs").empty().append('<h2>Required input<\/h2>' +
 					'<table class="input_opts" style="margin-top:8px;">' +
 						'<tr class="mmeta"><td colspan=2><span style="font-style:italic;">(Enter one or more of the following)<\/span><\/tr>' +
@@ -564,7 +571,6 @@
 		}
 		function go_griddata() {
 			var areaname, hwchoice;
-			$("#prelimMsg").show();
 			$("#specs").empty().append('<h2>Required input<\/h2>' +
 					'<table class="input_opts">' +
 						'<tr class="areatype"><td colspan=2><span style="font-style:italic;">(Enter information for one of the following grid selection types)<\/span><\/tr>' +
@@ -688,7 +694,6 @@
 			$("#multistndata_button").val("MultiStnData").on("click", go_multistndata);
 			$("#griddata_button").val("GridData").on("click", go_griddata);
 			$("#general_button").val("General/").on("click", go_general);
-			$("#builder").append('<div id="prelimMsg" class="ui-helper-hidden">... Preliminary Release - subject to change based on feedback ...</div>');
 			$("#infoDialog").dialog({
 				autoOpen: false,
 				modal: true,
@@ -754,7 +759,7 @@
 			$.ajaxSetup({
 				error: function (x, e) {
 					if (x.status === 0) {
-						$("#jresults").empty().html("<pre>You are offline - check your network.<\/pre>");
+						$("#jresults").empty().html("<pre>" + serverUrl + " is offline - check your network.<\/pre>");
 					} else if (x.status === 404) {
 						$("#jresults").empty().html("<pre>Requested URL not found.<\/pre>");
 					} else if (x.status === 500) {
