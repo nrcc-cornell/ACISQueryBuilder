@@ -4,12 +4,13 @@
 	<meta http-equiv="content-type" content="text/html; charset=utf-8" />
 	<title>ACIS Web Services Query Builder</title>
 	<link rel="stylesheet" type="text/css" href="http://code.jquery.com/ui/1.10.3/themes/redmond/jquery-ui.css" />
-	<link rel="stylesheet" type="text/css" href="./css/ACIS_Builder.css" />
+	<link rel="stylesheet" type="text/css" href="css/ACIS_Builder.css" />
 	<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
 	<script type="text/javascript" src="http://code.jquery.com/jquery-migrate-1.2.1.min.js"></script>
 	<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/jquery-ui.min.js"></script>
-	<script type="text/javascript" src="http://xmacis.rcc-acis.org/js/packages_1.0.1.min.js"></script>
-	<script type="text/javascript" src="http://xmacis.rcc-acis.org/js/xmacis_packages_latest.min.js"></script>
+	<script type="text/javascript" src="js/date.min.js"></script>
+	<script type="text/javascript" src="js/json2.min.js"></script>
+	<script type="text/javascript" src="js/jquery.acis-widgets.js"></script>
 	<noscript>
 		<style type="text/css">
 			.pagecontainer {display:none;}
@@ -19,7 +20,9 @@
 		</div>
 	</noscript>
 	<script type="text/javascript">
-		var serverUrl = window.location.hash.length > 1 ? "http://data." + window.location.hash.slice(1) + ".rcc-acis.org/" : "http://scacis.rcc-acis.org/virga";
+		var serverUrl = "http://data" +
+			(window.location.hash.length > 1 ? "." + window.location.hash.slice(1) : "") +
+			".rcc-acis.org/";
 		function makeList(x) {
 			var l = [];
 			$(x.split(",")).each(function (i, e) {
@@ -198,7 +201,7 @@
 					});
 					single_elem.groupby = combo_list;
 				}
-    			if (single_elem.smry && single_elem.smry.search(",") >= 0) {
+				if (single_elem.smry && single_elem.smry.search(",") >= 0) {
 					combo_list = [];
 					$(single_elem.smry.split(",")).each(function (i, e) {
 						combo_list.push(e);
@@ -260,16 +263,16 @@
 					$("input[name=name]").val($("input[name=elems]").val());
 				},
 				keyup: function () {
-			    	if ($(this).val().length >= 3) {
-			    		if ($(this).val().search(/hdd/i) >= 0 || $(this).val().search(/cdd/i) >= 0 || $(this).val().search(/gdd/i) >= 0) {
-			    			$("input[name=base]").parent().parent().show();
-			    		} else {
-			    			$("input[name=base]").val("").parent().parent().hide();
-			    		}
-			    	} else if ($(this).val().length === 0) {
-			    		$("input[name=base]").val("").parent().parent().hide();
-			    	}
-			    }
+					if ($(this).val().length >= 3) {
+						if ($(this).val().search(/hdd/i) >= 0 || $(this).val().search(/cdd/i) >= 0 || $(this).val().search(/gdd/i) >= 0) {
+							$("input[name=base]").parent().parent().show();
+						} else {
+							$("input[name=base]").val("").parent().parent().hide();
+						}
+					} else if ($(this).val().length === 0) {
+						$("input[name=base]").val("").parent().parent().hide();
+					}
+				}
 			});
 			$("input[name=smry]").on("keyup", function () {
 				if ($(this).val().length >= 1) {
@@ -340,6 +343,7 @@
 		
 		function go_general() {
 			var areaname;
+			$("#prelimMsg").hide();
 			$("#specs").empty().append('<h2>Required input<\/h2>' +
 					'<table class="input_opts">' +
 						'<tr><th>Area:<td><select name="area">' +
@@ -376,6 +380,7 @@
 		}
 		function go_multistndata() {
 			var areaname;
+			$("#prelimMsg").hide();
 			$("#specs").empty().append('<h2>Required input<\/h2>' +
 					'<table class="input_opts">' +
 						'<tr class="areatype"><td colspan=2><span style="font-style:italic;">(Enter id(s) for one of the following area types)<\/span><\/tr>' +
@@ -452,6 +457,7 @@
 			table_events("input", "meta", "meta_table");
 		}
 		function go_stndata() {
+			$("#prelimMsg").hide();
 			$("#specs").empty().append('<h2>Required input<\/h2>' +
 					'<table class="input_opts">' +
 						'<tr><th>Station id:<td><input type="text" name="sid" size=12 \/><\/tr>' +
@@ -499,6 +505,7 @@
 		}
 		function go_stnmeta() {
 			var others;
+			$("#prelimMsg").hide();
 			$("#specs").empty().append('<h2>Required input<\/h2>' +
 					'<table class="input_opts" style="margin-top:8px;">' +
 						'<tr class="mmeta"><td colspan=2><span style="font-style:italic;">(Enter one or more of the following)<\/span><\/tr>' +
@@ -571,6 +578,7 @@
 		}
 		function go_griddata() {
 			var areaname, hwchoice;
+			$("#prelimMsg").show();
 			$("#specs").empty().append('<h2>Required input<\/h2>' +
 					'<table class="input_opts">' +
 						'<tr class="areatype"><td colspan=2><span style="font-style:italic;">(Enter information for one of the following grid selection types)<\/span><\/tr>' +
@@ -694,6 +702,7 @@
 			$("#multistndata_button").val("MultiStnData").on("click", go_multistndata);
 			$("#griddata_button").val("GridData").on("click", go_griddata);
 			$("#general_button").val("General/").on("click", go_general);
+			$("#builder").append('<div id="prelimMsg" class="ui-helper-hidden">... Preliminary Release - subject to change based on feedback ...</div>');
 			$("#infoDialog").dialog({
 				autoOpen: false,
 				modal: true,
@@ -973,7 +982,7 @@
 	<tr><td>min  <td>Minimum value for the period </tr>
 	<tr><td>sum  <td>Sum of the values for the period </tr>
 	<tr><td>mean <td>Average of the values for the period </tr>
-    <tr><td>stdev <td>Standard deviation of the values (GridData only) </tr>
+	<tr><td>stdev <td>Standard deviation of the values (GridData only) </tr>
 	<tr><td>cnt_xx_yyy <td>Count of number of daily values exceeding threshold </tr>
 	<tr><td>pct_xx_yyy <td>Percent (integer) of daily values exceeding threshold </tr>
 	<tr><td>fct_xx_yyy <td>Fraction (float) of daily values exceeding threshold </tr>
@@ -1207,17 +1216,17 @@
 </div>
 
 <div id="units_table">
-    <table class="codes">
+	<table class="codes">
 	<caption>Units Codes</caption>
 	<thead>
 	<tr><th>Code <th>Description</tr>
 	</thead>
 	<tbody>
-    <tr><td>degreeC <td>Temperatures degrees C.</tr>
-    <tr><td>degreeF <td>Temperatures degrees F.</tr>
-    <tr><td>degreeK <td>Temperatures degrees K.</tr>
-    <tr><td>inch    <td>Precipitation inches.</tr>
-    <tr><td>mm      <td>Precipitation millimeters.</tr>
+	<tr><td>degreeC <td>Temperatures degrees C.</tr>
+	<tr><td>degreeF <td>Temperatures degrees F.</tr>
+	<tr><td>degreeK <td>Temperatures degrees K.</tr>
+	<tr><td>inch    <td>Precipitation inches.</tr>
+	<tr><td>mm      <td>Precipitation millimeters.</tr>
 	</tbody>
 	</table>
 </div>
