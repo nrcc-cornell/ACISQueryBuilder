@@ -10,7 +10,7 @@
 	<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/jquery-ui.min.js"></script>
 	<script type="text/javascript" src="js/date.min.js"></script>
 	<script type="text/javascript" src="js/json2.min.js"></script>
-	<script type="text/javascript" src="js/jquery.acis-widgets.js"></script>
+	<script type="text/javascript" src="js/jquery.acis-buttonBar.js"></script>
 	<noscript>
 		<style type="text/css">
 			.pagecontainer {display:none;}
@@ -40,15 +40,15 @@
 			return newObj;
 		}
 		function table_events(ttype, input_name, table) {
-			$(ttype + "[name=" + input_name + "]")
-				.die("focusin focusout")
+			$("#specs")
+				.off("focusin focusout", ttype + "[name=" + input_name + "]")
 				// need to delay show/hide to allow time for click event to fire
-				.live("focusin", function () {
+				.on("focusin", ttype + "[name=" + input_name + "]", function () {
 					setTimeout(function () {
 						$("#" + table).show();
 					}, 200);
 				})
-				.live("focusout", function () {
+				.on("focusout", ttype + "[name=" + input_name + "]", function () {
 					setTimeout(function () {
 						$("#" + table).hide();
 					}, 200);
@@ -86,7 +86,7 @@
 								$("#jresults").empty();
 								$.each(res, function (key, val) {
 									$("#jresults").append("<pre>" + key + ":<\/pre>");
-									if (key === "data" && typeof (val) === 'string' && val.search("image/png;base64") >= 0) {
+									if (key === "data" && typeof val === "string" && val.search("image/png;base64") >= 0) {
 										$("#jresults").append("<img src='" + val + "'><\/img>");
 									} else {
 										$(val).each(function (i, elem) {
@@ -102,7 +102,7 @@
 							}
 						});
 					}
-				},'json');
+				}, 'json');
 			}
 			$("#jparams").one("keyup", function () {
 				if (server.search("General") < 0) {
@@ -137,7 +137,7 @@
 						}
 					}
 				});
-				params["image"] = img_obj;
+				params.image = img_obj;
 			}
 			if (params.meta && params.meta.search('valid_daterange') >= 0 && !params.elems) {
 				alert("Need to specify elements when requesting valid_daterange");
@@ -647,7 +647,7 @@
 				}
 			});
 			$("input[name=output]").on("keyup", function () {
-				var checked = $("#showimgopts").attr("checked");
+				var checked = $("#showimgopts").prop("checked");
 				if ($(this).val().length >= 3 && $(this).val().search(/image/i) === 0) {
 					if (checked !== "checked") {
 						$("#showimgopts").trigger("click");
@@ -711,11 +711,11 @@
 				position: "center",
 				width: "auto"
 			});
-			$("#request_submit").live("click", collect_data);
-			$(".makeRequired").live("change", function () {
+			$("#specs").on("click", "#request_submit", collect_data);
+			$("#specs").on("change", ".makeRequired", function () {
 				$(this).removeClass("makeRequired");
 			});
-			$(".codes").live("click", function () {
+			$("#allspecs").on("click", ".codes", function () {
 				$("#infoDialog").dialog("option", "title", $(this).find('caption').text()).html($(this).parent().html()).dialog('open');
 				$("#infoDialog caption").remove();
 			});
