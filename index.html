@@ -5,7 +5,7 @@
 	<title>ACIS Web Services Query Builder</title>
 	<link rel="stylesheet" type="text/css" href="http://code.jquery.com/ui/1.10.3/themes/redmond/jquery-ui.css" />
 	<link rel="stylesheet" type="text/css" href="css/ACIS_Builder.css" />
-	<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+	<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
 	<script type="text/javascript" src="http://code.jquery.com/jquery-migrate-1.2.1.min.js"></script>
 	<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/jquery-ui.min.js"></script>
 	<script type="text/javascript" src="js/date.min.js"></script>
@@ -55,24 +55,10 @@
 				});
 		}
 		function process_request(params) {
-			var args = JSON.stringify(params),
-				server = serverUrl + $("#wstype input:checked").val();
-			$("#jparams_h2").html('Parameters (JSON)');
-			$("#jparams").empty().html("<pre>" + args + "<\/pre>");
-			$("#jresults_h2 span").html('Results');
-			$('#jresults').empty().html('Loading...');
-			$("#formatButton").hide();
-			$("#output").show();
-			if (server.search("General") >= 0) {
-				server += $("select[name=area] :selected").text();
-				$("#jparams pre").prepend("Server=/General/" + $('select[name=area] :selected').text() + "&nbsp;&nbsp;&nbsp;params=");
-			}
-			if (params.output && params.output.toLowerCase() === "image") {
-				$("#jresults_h2 span").html('Results (PNG)');
-				$("#jresults").empty().html("<img src='" + server + "?params=" + args + "'><\/img>");
-			} else {
-				// using proxy server to avoid cross domain problems
-				$.post(server, {params: args}, function (res) {
+			var xdr, res,
+				args = JSON.stringify(params),
+				server = serverUrl + $("#wstype input:checked").val(),
+				postSuccess = function (res) {
 					if (params.output && params.output.toLowerCase() === "csv") {
 						$("#jresults_h2 span").html('Results (CSV)');
 						$("#jresults").empty().html("<pre>" + res + "<\/pre>");
@@ -102,7 +88,46 @@
 							}
 						});
 					}
-				}, 'json');
+				},
+				postError = function (xhr, textStatus, error) {
+    				$("#jresults").empty().html("<p>Web services call failed: " + error + "</p>");
+				};
+			$("#jparams_h2").html('Parameters (JSON)');
+			$("#jparams").empty().html("<pre>" + args + "<\/pre>");
+			$("#jresults_h2 span").html('Results');
+			$('#jresults').empty().html('Loading...');
+			$("#formatButton").hide();
+			$("#output").show();
+			if (server.search("General") >= 0) {
+				server += $("select[name=area] :selected").text();
+				$("#jparams pre").prepend("Server=/General/" + $('select[name=area] :selected').text() + "&nbsp;&nbsp;&nbsp;params=");
+			}
+			if (params.output && params.output.toLowerCase() === "image") {
+				$("#jresults_h2 span").html('Results (PNG)');
+				$("#jresults").empty().html("<img src='" + server + "?params=" + args + "'><\/img>");
+			} else {
+				 if (window.XDomainRequest) {
+					xdr = new XDomainRequest();
+					xdr.open("GET", server + "?params=" + args);
+					xdr.onload = function () {
+						res = $.parseJSON(xdr.responseText);
+						postSuccess(results);
+					};
+					xdr.onerror = postError;
+					xdr.onprogress = $.noop();
+					xdr.ontimeout = $.noop();
+					setTimeout(function () {
+						xdr.send();
+					}, 0);
+				} else {
+					$.ajax(server, {
+						type: 'POST',
+						data: {params: args},
+						crossDamain: true,
+						success: postSuccess,
+						error: postError
+					});
+				}
 			}
 			$("#jparams").one("keyup", function () {
 				if (server.search("General") < 0) {
@@ -702,7 +727,7 @@
 			$("#multistndata_button").val("MultiStnData").on("click", go_multistndata);
 			$("#griddata_button").val("GridData").on("click", go_griddata);
 			$("#general_button").val("General/").on("click", go_general);
-			$("#builder").append('<div id="prelimMsg" class="ui-helper-hidden">... Preliminary Release - subject to change based on feedback ...</div>');
+			$("#builder").append('<div id="prelimMsg" class="ui-helper-hidden">... Image specifications subject to change based on feedback ...</div>');
 			$("#infoDialog").dialog({
 				autoOpen: false,
 				modal: true,
@@ -719,6 +744,15 @@
 				$("#infoDialog").dialog("option", "title", $(this).find('caption').text()).html($(this).parent().html()).dialog('open');
 				$("#infoDialog caption").remove();
 			});
+			$("#interval_hover").hover(
+			  function() {
+			    $(this).find("span:first-child").hide();
+				$("#interval_details").show();
+			  }, function() {
+			    $(this).find("span:first-child").show();
+				$("#interval_details").hide();
+			  }
+			);
 			// setup all events for all the tables (except bbox, state and meta, which differ between General and others)
 			table_events("input", "add", "add_table");
 			table_events("input", "basin", "area_table");
@@ -818,23 +852,23 @@
 	<table class="codes">
 	<caption>Common Element Codes</caption>
 	<tr><th>Abbreviation <th>Var Major <th>Description</tr>
-	<tr><td>maxt <td>1  <td>Maximum temperature </tr>
-	<tr><td>mint <td>2  <td>Minimum temperature </tr>
-	<tr><td>avgt <td>43 <td>Average temperature </tr>
-	<tr><td>obst <td>3  <td>Obs time temperature </tr>
-	<tr><td>pcpn <td>4  <td>Precipitation </tr>
-	<tr><td>snow <td>10 <td>Snowfall </tr>
-	<tr><td>snwd <td>11 <td>Snow Depth </tr>
-	<tr><td>     <td>7  <td>Pan evap (inches) </tr>
-	<tr><td>cdd  <td>44 <td>Degree days above base (CDD) (default base 65) </tr>
-	<tr><td>hdd  <td>45 <td>Degree days below base (HDD) (default base 65) </tr>
-	<tr><td>gdd  <td>-  <td>Growing Degree Days (base 50) </tr>
+	<tr><td>maxt <td>1  <td>Maximum temperature (&deg;F)</tr>
+	<tr><td>mint <td>2  <td>Minimum temperature (&deg;F)</tr>
+	<tr><td>avgt <td>43 <td>Average temperature (&deg;F)</tr>
+	<tr><td>obst <td>3  <td>Obs time temperature (&deg;F)</tr>
+	<tr><td>pcpn <td>4  <td>Precipitation (inches)</tr>
+	<tr><td>snow <td>10 <td>Snowfall (inches)</tr>
+	<tr><td>snwd <td>11 <td>Snow Depth (inches)</tr>
+	<tr><td>     <td>7  <td>Pan evaporation (inches) </tr>
+	<tr><td>cdd  <td>   <td>Cooling degree days (default base 65) </tr>
+	<tr><td>hdd  <td>45 <td>Degree days below base (default base 65) </tr>
+	<tr><td>gdd  <td>44 <td>Degree days above base (default base 50) </tr>
 	<tr><td>cddXX<td>-  <td>Cooling Degree Days; where XX is base temperature </tr>
 	<tr><td>hddXX<td>-  <td>Heating Degree Days; where XX is base temperature </tr>
 	<tr><td>gddXX<td>-  <td>Growing Degree Days; where XX is base temperature </tr>
 	<tfoot>
-	<tr><td colspan=3>Degree days can also be specified within an <code>elems</code>
-	object with the keys "name" (or "vX") and "base".</tr>
+	<tr><td colspan=3><i>Degree days can also be specified within an <code>elems</code>
+	object with the keys "name" (or "vX") and "base".</i></tr>
 	</tfoot>
 	</table>
 </div>
@@ -952,7 +986,34 @@
 	<tr><td>dly <td>results have daily time step </tr>
 	<tr><td>mly <td>results have monthly time step </tr>
 	<tr><td>yly <td>results have yearly time step </tr>
-	<tr><td><i>list</i> <td>documentation forthcoming </tr>
+	<tr><td style="vertical-align:top;"><i>list</i> 
+	<td id="interval_hover"><span>- Hover here to show details -</span>
+	<div id="interval_details" style="display:none;">
+		This can also be specified as an array containing a single positive integer and zeros. The 
+		array can have a length of either 1, 2 or 3, with the length indicating the temporal 
+		precision of the returned values. A length of 1 indicates annual precision, 2 monthly 
+		precision and 3 daily precision. The position of integers within the array signifies 
+		the frequency of the values returned. The strings "dly", "mly" and "yly" are shortcuts 
+		for commonly used intervals as shown in the following table:		
+		<table style="border-collapse:collapse;">
+			<tr><th>String</th><th>Array</th><th>Explanation</th></tr>
+			<tr><td>dly</td><td>[0,0,1]</td><td>A daily value is returned for each day.</td></tr>
+			<tr><td>mly</td><td>[0,1]</td><td>A monthly value is returned for each calendar month.</td></tr>
+			<tr><td>yly</td><td>[1]</td><td>An annual value is returned for each year.</td></tr>
+		</table>
+		Using an array for <code>interval</code> facilitates a number of more complex requests. The 
+		following examples demonstrate some of these capabilities:
+		<table style="border-collapse:collapse;">
+			<tr><th>Array</th><th>Explanation</th></tr>
+			<tr><td>[1,0,0]</td><td>Return a daily value once per year. For instance, daily rainfall for June 20  in each of a series of years.</td></tr>
+			<tr><td>[0,1,0]</td><td>Return a daily value once per month. For instance, max temperature on the 15th of each month for a series of years.</td></tr>
+			<tr><td>[0,0,7]</td><td>Return a daily value every seven days.</td></tr>
+			<tr><td>[0,3,0]</td><td>Return a daily value every third month.</td></tr>
+			<tr><td>[0,3]</td><td>Return a monthly value every third month.</td></td></tr>
+		</table>
+	</div>
+	</tr>
+	<tr><td colspan=2><i>Note: <code>interval</code> must be the same for all objects in an <code>elems</code> array.</i></td></tr>
 	</table>
 </div>
 
@@ -960,14 +1021,13 @@
 	<table class="codes">
 	<caption>Duration Options</caption>
 	<tr><th>Code <th>Description <th>Valid with intervals</tr>
-	<tr><td>dly <td>daily <td>dly </tr>
-	<tr><td>mly <td>monthly <td>mly </tr>
-	<tr><td>yly <td>yearly <td>yly </tr>
-	<tr><td>mtd <td>month-to-date <td>dly </tr>
-	<tr><td>ytd <td>year-to-date <td>dly, mly </tr>
-	<tr><td>std <td>season-to-date <td>dly, mly </tr>
-	<tr><td><i>integer</i> <td>length of data to be analyzed in units specified in interval <td>dly, mly, yly </tr>
-	<tr><td colspan=3 style="text-align:center;">Advanced options will be described in documentation. </tr>
+	<tr><td>dly <td>Daily <td>dly </tr>
+	<tr><td>mly <td>Monthly; must specify reduce <td>mly </tr>
+	<tr><td>yly <td>Yearly; must specify reduce <td>yly </tr>
+	<tr><td>mtd <td>Month-to-date; must specify reduce <td>dly </tr>
+	<tr><td>ytd <td>Year-to-date; must specify reduce <td>dly, mly </tr>
+	<tr><td>std <td>Season-to-date; must specify reduce and season_start <td>dly, mly </tr>
+	<tr><td><i>integer</i> <td>Length of period to be analyzed in units specified in interval <td>dly, mly, yly </tr>
 	</table>
 </div>
 
@@ -982,13 +1042,13 @@
 	<tr><td>min  <td>Minimum value for the period </tr>
 	<tr><td>sum  <td>Sum of the values for the period </tr>
 	<tr><td>mean <td>Average of the values for the period </tr>
-	<tr><td>stdev <td>Standard deviation of the values (GridData only) </tr>
-	<tr><td>cnt_xx_yyy <td>Count of number of daily values exceeding threshold </tr>
-	<tr><td>pct_xx_yyy <td>Percent (integer) of daily values exceeding threshold </tr>
-	<tr><td>fct_xx_yyy <td>Fraction (float) of daily values exceeding threshold </tr>
-	<tr><td>first_xx_yyy <td>First occurrence of daily value exceeding threshold </tr>
-	<tr><td>last_xx_yyy <td>Last occurrence of daily value exceeding threshold </tr>
-	<tr><td>run_xx_yyy <td>Consecutive daily values exceeding threshold </tr>
+	<tr><td>stddev <td>Standard deviation of the values (GridData only) </tr>
+	<tr><td>cnt_xx_yyy <td>Count of number of daily values passing threshold </tr>
+	<tr><td>pct_xx_yyy <td>Percent (integer) of daily values passing threshold </tr>
+	<tr><td>fct_xx_yyy <td>Fraction (float) of daily values passing threshold </tr>
+	<tr><td>first_xx_yyy <td>First occurrence of daily value passing threshold </tr>
+	<tr><td>last_xx_yyy <td>Last occurrence of daily value passing threshold </tr>
+	<tr><td>run_xx_yyy <td>Consecutive daily values passing threshold </tr>
 	<tr><td> <td>xx is operator (ge, gt, le, lt, eq, ne)<br />
 			yyy is threshold (integer or floating point)<br ?>
 			Examples: cnt_ge_0.01, pct_eq_100</tr>
@@ -1007,13 +1067,13 @@
 	<tr><td>min  <td>Minimum value for the column </tr>
 	<tr><td>sum  <td>Sum of values in the column </tr>
 	<tr><td>mean <td>Average of values in the column </tr>
-	<tr><td>cnt_xx_yyy <td>Count of number of values in column exceeding threshold </tr>
-	<tr><td>pct_xx_yyy <td>Percent (integer) of values in column exceeding threshold </tr>
-	<tr><td>fct_xx_yyy <td>Fraction (float) of values in columnn exceeding threshold </tr>
-	<tr><td>run_xx_yyy <td>Consecutive column values exceeding threshold </tr>
+	<tr><td>cnt_xx_yyy <td>Count of number of values in column passing threshold </tr>
+	<tr><td>pct_xx_yyy <td>Percent (integer) of values in column passing threshold </tr>
+	<tr><td>fct_xx_yyy <td>Fraction (float) of values in columnn passing threshold </tr>
+	<tr><td>run_xx_yyy <td>Consecutive column values passing threshold </tr>
 	<tr><td> <td>xx is operator (ge, gt, le, lt, eq, ne)<br />
 			yyy is threshold (integer or floating point)<br ?>
-			Examples: cnt_ge_0.01, pct_eq_100</tr>
+			Examples: cnt_ge_0.01, run_le_32</tr>
 	<tr><td colspan=2 style="text-align:center;">More than one smry code can be specified. </tr>
 	</tbody>
 	</table>
@@ -1039,7 +1099,7 @@
 	<tr><th>Description  </tr>
 	</thead>
 	<tbody>
-	<tr><td>Integer value indicating the number missing daily values to allow before a summary statistic is reported as missing.</tr>
+	<tr><td>Integer value indicating the number missing daily values to allow before a reduction is reported as missing.</tr>
 	</tbody>
 	</table>
 </div>
@@ -1060,20 +1120,22 @@
 	<table class="codes">
 	<caption>Elems Object Keywords</caption>
 	<tr><th>Keyword <th>Value <th>Examples</tr>
-	<tr><td>name     <td>Element code from table above   <td>maxt, pcpn </tr>
+	<tr><td>name     <td>Element code   <td>maxt, pcpn </tr>
 	<tr><td>vX       <td>Var major or var major.minor   <td>1, 10.4 </tr>
 	<tr><td>vN       <td>Var minor (must also specify <code>vX</code>)  <td>4 </tr>
-	<tr><td>interval <td>dly (daily), mly (monthly) <td>mly </tr>
-	<tr><td>duration <td>dly (daily), mly (monthly), mtd (month-to-date), <br />std (season-to-date), ytd (year-to-date) <td>mtd </tr>
+	<tr><td>base <td>Base temperature for degree days <td>mly </tr>
+	<tr><td>interval <td>dly (daily), mly (monthly), yly (yearly) or list <td>mly </tr>
+	<tr><td>duration <td>dly (daily), mly (monthly), yly (yearly), mtd (month-to-date), std (season-to-date), ytd (year-to-date) or integer <td>mtd </tr>
 	<tr><td>season_start <td>Season start date - only valid with duration of <code>std</code> <td>[12,21], 06-20 </tr>
-	<tr><td rowspan=2>reduce   <td>Reduction type from table above  <td>sum, mean </tr>
+	<tr><td rowspan=2>reduce   <td>Data summary or reduction type <td>sum, mean </tr>
 	<tr><td>For cnt, pct or fct, append "_operator_threshold". <br>Valid operators are eq, le, lt, ge, gt, ne <td>cnt_lt_32, pct_ge_0.01 </tr>
-	<tr><td>add  <td>Additional information to be appended.<br />Valid operators are f, t, i, v, n <td>t, f </tr>
+	<tr><td>add  <td>Additional information to be appended.<br />Valid operators are f, t, i, v, n, s <td>t, f </tr>
 	<tr><td>smry  <td>Column summary statistics <td>mean </tr>
-	<tr><td>normal  <td>Normals - valid options: 1 or normal_departure <td>1 </tr>
+	<tr><td>smry_only  <td>Return only summary values (1 for true) <td>1 </tr>
+	<tr><td>normal  <td>Normals - valid options: 1 or "departure" <td>1 </tr>
 	<tr><td>maxmissing  <td>Allowable number of missing values <td>5 </tr>
-	<tr><td>prec  <td>Precision of results (positive after decimal point; negative before) <td>3 </tr>
-	<tr style="color:gray;"><td>group_by <td>Planned - documentation when available<td> </tr>
+	<tr><td>prec  <td>Decimal places of precision of results <td>3 </tr>
+	<tr><td>groupby <td>Group together days or months of data for a year<td>["year","06-01","08-31"]</tr>
 	</table>
 </div>
 
@@ -1143,7 +1205,7 @@
 	<table class="codes">
 	<caption>Bounding Box Format</caption>
 	<tr><th>Description <th>Example</tr>
-	<tr><td>Bounds in decimal degrees (W, S, E, N) <td>-90, 40, -88, 41</tr>
+	<tr><td>Bounds in decimal degrees (W, S, E, N); negative values for South latitude and West longitude <td>-90, 40, -88, 41</tr>
 	</table>
 </div>
 
@@ -1151,9 +1213,9 @@
 	<table class="codes">
 	<caption>Grid Codes</caption>
 	<tr><th>Code <th>Description<th>Area<th>Period</tr>
-	<tr><td> 1<td>NRCC Interpolated<td>US<td>1950-present</tr>
-	<tr><td> 3<td>NRCC Hi-Res<td>East of Rockies<td>2011-present</tr>
-	<tr><td> 4-16<td>NARCCAP *<td>US<td>1970-2000, 2040-2070</tr>
+	<tr><td> 1<td>NRCC Interpolated<td>Continental US<td>1950-present</tr>
+	<tr><td> 3<td>NRCC Hi-Res<td>East of Rockies<td>Temp: 1998-present<br />Pcpn: 2002-present</tr>
+	<tr><td> 4-16<td>NARCCAP *<td>Continental US<td>1970-2000, 2040-2070</tr>
 	<tr><td><td colspan=3>4: CRCM + NCEP (historical only)</tr>
 	<tr><td><td colspan=3>5: CRCM + CCSM</tr>
 	<tr><td><td colspan=3>6: CRCM + CGCM3</tr>
@@ -1167,7 +1229,9 @@
 	<tr><td><td colspan=3>14: WRFG + NCEP (historical only)</tr>
 	<tr><td><td colspan=3>15: WRFG + CCSM</tr>
 	<tr><td><td colspan=3>16: WRFG + CGCM3</tr>
-	<tr><td colspan=4>* Be aware of idiosyncrasies before using this grid set.</tr>
+	<tr><td> 21</td><td><a href="http://www.prism.oregonstate.edu" target="_blank">PRISM</a></td><td>Continental US</td><td>Daily: 1981-present<br />
+	Monthly/Yearly: 1895-present</td></tr>
+	<tr><td colspan=4>* Be aware of idiosyncrasies before using NARCCAP grid sets.</tr>
 	</table>
 </div>
 
@@ -1175,7 +1239,7 @@
 	<table class="codes">
 	<caption>Location Format</caption>
 	<tr><th>Description <th>Example</tr>
-	<tr><td>Point location defined in decimal degrees (longitude, latitude) <td>-77.7, 41.8</tr>
+	<tr><td>Point location defined in decimal degrees (longitude, latitude); negative values for South latitude and West longitude <td>-77.7, 41.8</tr>
 	</table>
 </div>
 
@@ -1189,8 +1253,8 @@
 	<tr><td>aaaa_max  <td>Maximum grid value in area </tr>
 	<tr><td>aaaa_min  <td>Minimum grid value in area </tr>
 	<tr><td>aaaa_mean <td>Average of all grid values in the area </tr>
-	<tr><td>aaaa_pct_xx_yyy <td>Percent (integer) of area exceeding threshold </tr>
-	<tr><td>aaaa_fct_xx_yyy <td>Fraction (float) of area exceeding threshold </tr>
+	<tr><td>aaaa_pct_xx_yyy <td>Percent (integer) of area passing threshold </tr>
+	<tr><td>aaaa_fct_xx_yyy <td>Fraction (float) of area passing threshold </tr>
 	<tr><td> <td>aaaa is area type ("county", "climdiv", "basin", "state")<br />
 			xx is operator (ge, gt, le, lt, eq, ne)<br />
 			yyy is threshold (integer or floating point)<br ?>
@@ -1278,7 +1342,7 @@
 	<tr><td>state  <td>State borders </tr>
 	<tr><td>county <td>County borders </tr>
 	<tr><td colspan=2>Line width and color can also be specified, separated by colons.<br />
-	                  For example, state:1:red</tr>
+	                  For example, ["state:1:red", "county:1:blue"]</tr>
 	</tbody>
 	</table>
 </div>
@@ -1305,6 +1369,7 @@
 	<tbody>
 	<tr><td>Blues <td>Shades of blue </tr>
 	<tr><td>Reds <td>Shades of red </tr>
+	<tr><td>jet <td>Blue to red </tr>
 	<tr><td><i>etc.</i> <td>Other color maps as defined in <a href="http://matplotlib.sourceforge.net/mpl_examples/pylab_examples/show_colormaps.pdf">mapplotlib</a> </tr>
 	</tbody>
 	</table>
