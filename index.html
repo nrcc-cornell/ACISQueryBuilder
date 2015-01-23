@@ -206,6 +206,10 @@
 					if (this.value.length > 0) {
 						if ($.isNumeric(this.value) && this.name !== "season_start") {
 							single_elem[this.name] = parseInt(this.value, 10);
+						} else if (this.name === "units") {
+							single_elem[this.name] = this.value;
+						} else if (this.name === "gname") {
+							single_elem["name"] = this.value.toLowerCase();
 						} else {
 							single_elem[this.name] = this.value.replace(/\s/g, "").toLowerCase();
 						}
@@ -621,7 +625,7 @@
 					'<\/div>' +
 					'<h2 class="oelem">Optional element specifications<\/h2>' +
 					'<table class="oelem elems_opts">' +
-						'<tr><th>Name:<td><input type="text" name="name" size=12 \/><\/tr>' +
+						'<tr><th>Name:<td><input type="text" name="gname" size=12 \/><\/tr>' +
 						'<tr class="ui-helper-hidden"><th>Base:<td><input type="text" name="base" size=12 \/><\/tr>' +
 						'<tr><th>Interval:<td><input type="text" name="interval" size=12 \/><\/tr>' +
 						'<tr><th>Duration:<td><input type="text" name="duration" size=12 \/><\/tr>' +
@@ -766,6 +770,7 @@
 			table_events("input", "interval", "interval_table");
 			table_events("input", "maxmissing", "maxmissing_table");
 			table_events("input", "name", "elems_table");
+			table_events("input", "gname", "grid_elems_table");
 			table_events("input", "normal", "normal_table");
 			table_events("input", "output", "output_table");
 			table_events("input", "prec", "prec_table");
@@ -870,6 +875,37 @@
 	<tr><td colspan=3><i>Degree days can also be specified within an <code>elems</code>
 	object with the keys "name" (or "vX") and "base".</i></tr>
 	</tfoot>
+	</table>
+</div>
+
+<div id="grid_elems_table">
+	<table class="codes">
+	<caption>Common Grid Element Codes</caption>
+	<tr><th>Abbreviation <th>Var Major <th>Description</tr>
+	<tr><td>maxt <td>1  <td>Maximum temperature (&deg;F)</tr>
+	<tr><td>mint <td>2  <td>Minimum temperature (&deg;F)</tr>
+	<tr><td>avgt <td>43 <td>Average temperature (&deg;F)</tr>
+	<tr><td>pcpn <td>4  <td>Precipitation (inches)</tr>
+	<tr><td>cdd  <td>   <td>Cooling degree days (default base 65) </tr>
+	<tr><td>hdd  <td>45 <td>Degree days below base (default base 65) </tr>
+	<tr><td>gdd  <td>44 <td>Degree days above base (default base 50) </tr>
+	<tr><td>cddXX<td>-  <td>Cooling Degree Days; where XX is base temperature </tr>
+	<tr><td>hddXX<td>-  <td>Heating Degree Days; where XX is base temperature </tr>
+	<tr><td>gddXX<td>-  <td>Growing Degree Days; where XX is base temperature </tr>
+	<tr><td>gddXX<td>-  <td>Growing Degree Days; where XX is base temperature </tr>
+	<tr><td colspan=3 style="text-align:center;"><i>Degree days can also be specified within an <code>elems</code>
+		object with the keys "name" (or "vX") and "base".</i></tr>
+	<tr><td colspan=3 style="text-align:center;"><b>Additional Element Codes for Monthly/Yearly PRISM Data</b><br/>
+		<i>The following codes are used to access monthly/yearly PRISM gridded datasets directly,
+		not derived monthly/yearly means or sums reduced from daily gridded data.</i></tr>
+	<tr><td>mly_maxt <td>91  <td>Monthly mean maximum temperature (&deg;F)</tr>
+	<tr><td>mly_mint <td>92  <td>Monthly mean minimum temperature (&deg;F)</tr>
+	<tr><td>mly_avgt <td>99  <td>Monthly mean average temperature (&deg;F)</tr>
+	<tr><td>mly_pcpn <td>94  <td>Monthly precipitation sum (inches)</tr>
+	<tr><td>yly_maxt <td>95  <td>Yearly mean maximum temperature (&deg;F)</tr>
+	<tr><td>yly_mint <td>96  <td>Yearly mean minimum temperature (&deg;F)</tr>
+	<tr><td>yly_avgt <td>100 <td>Yearly mean average temperature (&deg;F)</tr>
+	<tr><td>yly_pcpn <td>98  <td>Yearly precipitation sum (inches)</tr>
 	</table>
 </div>
 
@@ -1409,5 +1445,6 @@
 <div style="clear:both;">
 <div id="infoDialog"> </div>
 </div>
+<a href="http://www.rcc-acis.org/docs_webservices.html" target="_blank">Full documentation</a>
 </body>
 </html>
