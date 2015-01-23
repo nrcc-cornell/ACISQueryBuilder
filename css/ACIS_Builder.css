@@ -21,3 +21,5 @@ button span            { font-size:75%; font-weight:600; padding: 1px 5px !impor
 .codes td, .codes th   { border:1px solid blue; padding:1px 2px; font-size:90%; }
 #infoDialog td, #infoDialog th   { font-size:1.1em; padding:10px; text-align:left; }
 #prelimMsg			   { text-align:center; color:red; font-style:italic; margin-top:8px; }
+#elem_box textarea		{ width:97%; }
+input[name="meta"]		{ width:97%; }

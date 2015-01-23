@@ -3,11 +3,11 @@
 	<head>
 	<meta http-equiv="content-type" content="text/html; charset=utf-8" />
 	<title>ACIS Web Services Query Builder</title>
-	<link rel="stylesheet" type="text/css" href="http://code.jquery.com/ui/1.10.3/themes/redmond/jquery-ui.css" />
+	<link rel="stylesheet" type="text/css" href="http://code.jquery.com/ui/1.11.2/themes/redmond/jquery-ui.css" />
 	<link rel="stylesheet" type="text/css" href="css/ACIS_Builder.css" />
-	<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+	<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
 	<script type="text/javascript" src="http://code.jquery.com/jquery-migrate-1.2.1.min.js"></script>
-	<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/jquery-ui.min.js"></script>
+	<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.11.2/jquery-ui.min.js"></script>
 	<script type="text/javascript" src="js/date.min.js"></script>
 	<script type="text/javascript" src="js/json2.min.js"></script>
 	<script type="text/javascript" src="js/jquery.acis-buttonBar.js"></script>
@@ -114,8 +114,8 @@
 						postSuccess(results);
 					};
 					xdr.onerror = postError;
-					xdr.onprogress = $.noop();
-					xdr.ontimeout = $.noop();
+					xdr.onprogress = function () { };
+					xdr.ontimeout = function () { };
 					setTimeout(function () {
 						xdr.send();
 					}, 0);
@@ -123,6 +123,7 @@
 					$.ajax(server, {
 						type: 'POST',
 						data: {params: args},
+						dataType: 'json',
 						crossDamain: true,
 						success: postSuccess,
 						error: postError
@@ -385,7 +386,7 @@
 					'<\/table>' +
 					'<h2>Optional input<\/h2>' +
 					'<table class="input_opts">' +
-						'<tr><th>Meta options:<td><input type="text" name="meta" size=52 \/><\/tr>' +
+						'<tr><th>Meta options:<td style="width:100%;"><input type="text" name="meta" \/><\/tr>' +
 					'<\/table>' +
 					'<p><button id="request_submit" class="submitButton">Submit<\/button><\/p>');
 			$("#specs :input").addClass("ui-widget-content ui-corner-all ui-state-default");
@@ -453,7 +454,7 @@
 					'<\/table>' +
 					'<h2>Other optional input<\/h2>' +
 					'<table class="input_opts">' +
-						'<tr><th>Meta options:<td><input type="text" name="meta" size=52 \/><\/tr>' +
+						'<tr><th>Meta options:<td style="width:100%;"><input type="text" name="meta" \/><\/tr>' +
 						'<tr class="ui-helper-hidden"><th>Output option:<td><input type="text" name="output" size=12 \/><\/tr>' +
 					'<\/table>' +
 					'<p><button id="request_submit" class="submitButton">Submit<\/button><\/p>');
@@ -523,7 +524,7 @@
 					'<\/table>' +
 					'<h2>Other optional input<\/h2>' +
 					'<table class="input_opts">' +
-						'<tr><th>Meta options:<td><input type="text" name="meta" size=52 \/><\/tr>' +
+						'<tr><th>Meta options:<td style="width:100%;"><input type="text" name="meta" \/><\/tr>' +
 						'<tr><th>Output option:<td><input type="text" name="output" size=12 \/><\/tr>' +
 					'<\/table>' +
 					'<p><button id="request_submit" class="submitButton">Submit<\/button><\/p>');
@@ -548,8 +549,8 @@
 					'<\/table>' +
 					'<h2>Optional input<\/h2>' +
 					'<table class="input_opts">' +
-						'<tr><th>Meta options:<td><input type="text" name="meta" size=52 \/><\/tr>' +
-						'<tr class="ometa"><th>Elements:<td><input type="text" name="elems" size=52 \/><\/tr>' +
+						'<tr><th>Meta options:<td style="width:100%;"><input type="text" name="meta" \/><\/tr>' +
+						'<tr class="ometa"><th>Elements:<td><input type="text" name="elems"  style="width:97%;" \/><\/tr>' +
 						'<tr class="ometa"><th>Start Date:<td><input type="text" name="sdate" size=12 \/><input type="checkbox" id="singledate" \/>single date<\/tr>' +
 						'<tr class="ometa"><th>End Date:<td><input type="text" name="edate" size=12 \/><\/tr>' +
 						'<tr><th>Output option:<td><input type="text" name="output" size=12 \/><\/tr>' +
