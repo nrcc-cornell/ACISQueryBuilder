@@ -123,7 +123,7 @@
 					$.ajax(server, {
 						type: 'POST',
 						data: {params: args},
-						dataType: 'json',
+						dataType: params.output && params.output.toLowerCase() === "csv" ? 'text' : 'json',
 						crossDamain: true,
 						success: postSuccess,
 						error: postError
@@ -845,11 +845,21 @@
 	<tr><td>ICAO <td>5 <td>4-character ICAO id <td>KGRR</tr>
 	<tr><td>GHCN <td>6 <td>11-character GHCN id <td>USW00003927</tr>
 	<tr><td>NWSLI<td>7 <td>5-character NWSLI <td>AURN6</tr>
+<!-- 
 	<tr><td>RCC  <td>8 <td>RCC local id <td>301402</tr>
-	<tr><td>ThreadEx <td>9 <td>6-character ThreadEx id <td>HSVthr</tr>
-	<tr><td>CoCoRaHS <td>10 <td>8-character CoCoRaHS id <td>NYTM0004</tr>
+ -->
+	<tr><td>THRDX <td>9 <td>6-character ThreadEx id <td>HSVthr</tr>
+	<tr><td>COCORAHS <td>10 <td>8-character CoCoRaHS id <td>NYTM0004</tr>
 <!-- 
 	<tr><td>16 <td>AWDN <td>7-character HPRCC AWDN id <td>a250059</tr>
+	<tr><td>DEOS <td>11 <td>Delaware DEOS id <td></tr>
+	<tr><td>MOWX <td>12 <td>Missouri Mesonet id <td></tr>
+	<tr><td>OARC <td>22 <td>Ohio OARDC id <td></tr>
+	<tr><td>MIWX <td>13 <td>Michigan Enviroweather<td></tr>
+	<tr><td>NEWA <td>26 <td>NEWA id <td></tr>
+	<tr><td>CULOG <td>27 <td>Cornell WxNet id <td></tr>
+	<tr><td>NJWX <td>28 <td>NJ WxNet id <td></tr>
+	<tr><td>CADX <td>29 <td>California Index id <td></tr>
  -->
 	</table>
 </div>
@@ -917,6 +927,7 @@
 	<tr><td>name  <td>Station name  </tr>
 	<tr><td>state <td>2-letter state abbrev </tr>
 	<tr><td>sids  <td>Array of station ids/types </tr>
+	<tr><td>sid_dates  <td>Date range for each sid </tr>
 	<tr><td>ll    <td>Longitude and latitude </tr>
 	<tr><td>elev  <td>Elevation </tr>
 	<tr><td>uid   <td>ACIS id </tr>
@@ -1080,6 +1091,7 @@
 	<tr><td>sum  <td>Sum of the values for the period </tr>
 	<tr><td>mean <td>Average of the values for the period </tr>
 	<tr><td>stddev <td>Standard deviation of the values (GridData only) </tr>
+	<tr><td>list <td>Array of daily values for the period </tr>
 	<tr><td>cnt_xx_yyy <td>Count of number of daily values passing threshold </tr>
 	<tr><td>pct_xx_yyy <td>Percent (integer) of daily values passing threshold </tr>
 	<tr><td>fct_xx_yyy <td>Fraction (float) of daily values passing threshold </tr>
@@ -1251,8 +1263,9 @@
 	<caption>Grid Codes</caption>
 	<tr><th>Code <th>Description<th>Area<th>Period</tr>
 	<tr><td> 1<td>NRCC Interpolated<td>Continental US<td>1950-present</tr>
+	<tr><td> 2<td>Multi-Sensor Precipitation Estimates<td>Continental US<td>2006-present</tr>
 	<tr><td> 3<td>NRCC Hi-Res<td>East of Rockies<td>Temp: 1998-present<br />Pcpn: 2002-present</tr>
-	<tr><td> 4-16<td>NARCCAP *<td>Continental US<td>1970-2000, 2040-2070</tr>
+	<tr><td> 4-16<td>NARCCAP (to be deprecated) *<td>Continental US<td>1970-2000, 2040-2070</tr>
 	<tr><td><td colspan=3>4: CRCM + NCEP (historical only)</tr>
 	<tr><td><td colspan=3>5: CRCM + CCSM</tr>
 	<tr><td><td colspan=3>6: CRCM + CGCM3</tr>
@@ -1288,19 +1301,15 @@
 	<tr><td>aaaa_max  <td>Maximum grid value in area </tr>
 	<tr><td>aaaa_min  <td>Minimum grid value in area </tr>
 	<tr><td>aaaa_mean <td>Average of all grid values in the area </tr>
-	<tr><td>aaaa_pct_xx_yyy <td>Percent (integer) of area passing threshold </tr>
-	<tr><td>aaaa_fct_xx_yyy <td>Fraction (float) of area passing threshold </tr>
 	<tr><td> <td>aaaa is area type ("county", "climdiv", "basin", "state")<br />
-			xx is operator (ge, gt, le, lt, eq, ne)<br />
-			yyy is threshold (integer or floating point)<br ?>
-			Examples: county_max, cwa_pct_ge_100</tr>
+			Examples: county_max</tr>
 	</tbody>
 	</table>
 </div>
 
 <div id="groupby_table">
 	<table class="codes">
-	<caption>Group By Types</caption>
+	<caption>Group By Types <b>(to be deprecated)</b></caption>
 	<thead>
 	<tr><th>Code  <th>Description</tr>
 	</thead>
