@@ -479,7 +479,7 @@
 				if ($(this).is(':checked') && $("input[name=meta]").val().length === 0) {
 					$("input[name=output]").parent().parent().show();
 				} else {
-					$("input[name=output]").parent().parent().hide();
+					$("input[name=output]").val('json').parent().parent().hide();
 				}
 			});
 			table_events("input", "bbox", "area_table");
@@ -583,7 +583,7 @@
 			});
 			$("input[name=meta]").on("keyup", function () {
 				if ($(this).val().length) {
-					$("input[name=output]").parent().parent().fadeOut('fast');
+					$("input[name=output]").val('json').parent().parent().fadeOut('fast');
 				} else {
 					$("input[name=output]").parent().parent().fadeIn('fast');
 				}
