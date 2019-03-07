@@ -57,7 +57,7 @@
 		function process_request(params) {
 			var xdr, res,
 				args = JSON.stringify(params),
-				server = serverUrl + $("#wstype input:checked").val(),
+				server = $("#wstype input:checked").val() !== "GridData2" ? (serverUrl + $("#wstype input:checked").val()) : "http://grid2.rcc-acis.org/GridData",
 				postSuccess = function (res) {
 					if (params.output && params.output.toLowerCase() === "csv") {
 						$("#jresults_h2 span").html('Results (CSV)');
@@ -122,7 +122,7 @@
 				} else {
 					$.ajax(server, {
 						type: 'POST',
-						data: {params: args},
+						data: $("#wstype input:checked").val() !== "GridData2" ? {params: args} : args,
 						dataType: params.output && params.output.toLowerCase() === "csv" ? 'text' : 'json',
 						crossDamain: true,
 						success: postSuccess,
@@ -720,7 +720,7 @@
 				.buttonBar({
 					barName: "wstype",
 					barOrient: "horizontal",
-					buttonInfo: [["stnmeta_button", "StnMeta"], ["stndata_button", "StnData"], ["multistndata_button", "MultiStnData"], ["griddata_button", "GridData"], ["general_button", "General"]],
+					buttonInfo: [["stnmeta_button", "StnMeta"], ["stndata_button", "StnData"], ["multistndata_button", "MultiStnData"], ["griddata_button", "GridData"], ["griddata2_button", "GridData2"], ["general_button", "General"]],
 					buttonDefault: "stnmeta_button"
 				});
 			$("#wstype input").on("click", function () {
@@ -731,6 +731,7 @@
 			$("#stndata_button").val("StnData").on("click", go_stndata);
 			$("#multistndata_button").val("MultiStnData").on("click", go_multistndata);
 			$("#griddata_button").val("GridData").on("click", go_griddata);
+			$("#griddata2_button").val("GridData2").on("click", go_griddata);
 			$("#general_button").val("General/").on("click", go_general);
 			$("#builder").append('<div id="prelimMsg" class="ui-helper-hidden">... Image specifications subject to change based on feedback ...</div>');
 			$("#infoDialog").dialog({
@@ -1456,6 +1457,5 @@
 <div id="infoDialog"> </div>
 </div>
 <a href="http://www.rcc-acis.org/docs_webservices.html" target="_blank">Full documentation</a>
-<br>Test the <a href="./index2.html">new version of the Query Builder</a>.
 </body>
 </html>
