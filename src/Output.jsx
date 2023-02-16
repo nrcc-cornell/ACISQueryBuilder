@@ -1,207 +1,211 @@
-import React, { Component } from 'react'
-import Typography from '@material-ui/core/Typography'
-import Button from '@material-ui/core/Button'
-import TextField from '@material-ui/core/TextField'
-import Paper from '@material-ui/core/Paper'
+import React, { useState, useEffect } from 'react'
+import Typography from '@mui/material/Typography'
+import Button from '@mui/material/Button'
+import TextField from '@mui/material/TextField'
+import Paper from '@mui/material/Paper'
+import Box from '@mui/material/Box'
+import InputAdornment from '@mui/material/InputAdornment'
 import ResultsButtons from './ResultsButtons'
+import CopyToClipboard from './CopyToClipboard'
+import { basicFormat } from './builders'
+import { acisServers } from './acisServers'
 
-export default class Output extends Component {
-  constructor(props) {
-    super(props)
-    this.state = {
-      input_params_string: "",
-      results: "",
-      results_json: {},
-      format: "normal",
-      isCsv: false,
-      selectedButton: "JSON",
-      dataimage: ""
+const Output = (props) => {
+  const [ datastate, setDatastate ] = useState({
+    results: "",
+    results_json: {},
+    //format: "normal", hard code all whitespace options to pre-wrap, instead of some being "normal"
+    dataimage: "",
+  })
+  const [ input_params_string, setInput_params_string ] = useState("")
+  const [ hasParamsError, setHasParamsError ] = useState(false)
+  const [ selectedButton, setSelectedButton ] = useState("JSON")
+  const [ isCsv, setIsCsv ] = useState(false)
+
+  const getAcisServerUrl = () => {
+    let serverurl = acisServers[props.wstype]
+    const rccindex = serverurl.indexOf('data.rcc-acis')
+    if (rccindex !== -1 && props.server !== 'Any') {
+      serverurl = `${serverurl.slice(0,rccindex+4)}.${props.server.toLowerCase()}${serverurl.slice(rccindex+4)}`
     }
+    return serverurl + props.generalArea
   }
 
   // user changed parameter string
-  handleParamsChange = event => {
-    this.setState({
-      input_params_string: event.target.value,
-      results: '',
-    })
-    this.props.changedInput(event.target.value)
+  const handleParamsChange = event => {
+    const inputString = event.target.value
+    setInput_params_string(inputString)
+    setDatastate({...datastate, ...{results: ''}})
+    if (inputString.length > 0) {
+      try {
+        const parsedString = JSON.parse(inputString)
+        props.setInput_params(parsedString)
+        setHasParamsError(false)
+      } catch {
+        setHasParamsError(true)
+      }
+    }
   }  
 
   // submit parameter string to server
-  handleSubmit = () => {
-    this.setState({
-      results: "Submitting request ...", 
-      isCsv: this.props.input_params.output === 'csv', 
-      dataimage: ""
-    })
-    const url = this.props.acisServer + this.props.generalArea
-    if (this.props.input_params.output !== "image") {
+  const handleSubmit = () => {
+    setDatastate({...datastate, ...{
+      results: "Submitting request ..."
+    }})
+    const url = getAcisServerUrl()
+    if (props.input_params.output !== "image") {
       fetch(url, {
         method: 'POST',
-        body: this.state.input_params_string,
+        body: input_params_string,
         headers: {'Content-Type': 'application/json'}
       })
-        .then(response => response.ok && !this.state.isCsv ? response.json() : response.text())
-        .then(data => this.setState({
-          results: typeof data === 'object' ? JSON.stringify(data,null,0) : data,
-          results_json: data,
-          format: typeof data === 'string' ? "pre" : "normal",
-          selectedButton: typeof data === 'object' ? "JSON" : ""
-        }))
-        .catch(error => this.setState({
-          results: 'Error: ' + error.message
-        }))
+        .then(response => response.ok && !isCsv ? response.json() : response.text())
+        .then(data => {
+          setDatastate({...datastate, ...{
+            results: typeof data === 'object' ? JSON.stringify(data,null,0) : data,
+            results_json: data,
+            //format: typeof data === 'string' ? "pre-wrap" : "normal",
+            dataimage: "",
+          }})
+          setSelectedButton(typeof data === 'object' ? "JSON" : "")
+        })
+        .catch(error => setDatastate({...datastate, ...{
+          results: 'Error: ' + error.message,
+          dataimage: ""
+        }}))
     } else {
-      this.setState({
+      setDatastate({...datastate, ...{
         results: "image",
         results_json: '',
-        format: 'normal',
-        dataimage: url + '?params=' + this.state.input_params_string, 
-        selectedButton: ''
-       })
+        //format: 'normal',
+        dataimage: url + '?params=' + input_params_string
+      }})
+      setSelectedButton("")
     }
   }
 
-  basicFormat = (results_json) => {
-    let results_string = ""
-    let dataimage = ""
-    Object.keys(results_json).forEach(key => {
-      if (key === 'data' && results_json[key].includes("image/png;base64")) {
-        dataimage =results_json[key]
-      } else if (Array.isArray(results_json[key])) {
-        results_string += key + ":\n"
-        results_json[key].forEach(item => {
-          results_string += " " + JSON.stringify(item) + "\n"
-        }) 
-      } else {
-        results_string += key + ":\n"
-        results_string += " " + JSON.stringify(results_json[key]) + "\n"
-      }
-    })
-    return {results_string: results_string, dataimage: dataimage}
-  }
-
   // user clicked one of the format buttons
-  handleFormat = (results_button) => {
-    this.setState({
-      selectedButton: results_button
-    })
-    if (results_button === "Basic format") {
-      const basicFormatResults = this.basicFormat(this.state.results_json)
-      this.setState({
-        results: basicFormatResults.results_string,
-        format:"pre-wrap", 
-        dataimage: basicFormatResults.dataimage.length > 0 ? basicFormatResults.dataimage : '',
-      })
-    } else if (results_button === "JSON") {
-      this.setState({
-        results: JSON.stringify(this.state.results_json,null,0), 
-        format:"normal", 
+  const handleFormat = (results_button) => {
+    setSelectedButton(results_button)
+    if (results_button === "JSON") {
+      setDatastate({...datastate, ...{
+        results: JSON.stringify(datastate.results_json,null,0), 
+        //format:"normal", 
         dataimage: "",
-      })
+      }})
+    } else if (results_button === "Basic format") {
+      const basicFormatResults = basicFormat(datastate.results_json)
+      setDatastate({...datastate, ...{
+        results: basicFormatResults.results_string,
+        //format:"pre-wrap", 
+        dataimage: basicFormatResults.dataimage.length > 0 ? basicFormatResults.dataimage : '',
+      }})
     } else if (results_button === "Full format") {
-      const hasImage = this.state.results_json.hasOwnProperty("data") && this.state.results_json.data.includes("image/png;base64")
-      this.setState({
-        results: JSON.stringify(this.state.results_json,null,2), 
-        format: "pre-wrap", 
-        dataimage: hasImage ? this.state.results_json.data : ''
-      })
+      const hasImage = datastate.results_json.hasOwnProperty("data") && datastate.results_json.data.includes("image/png;base64")
+      setDatastate({...datastate, ...{
+        results: JSON.stringify(datastate.results_json,null,2), 
+        //format: "pre-wrap", 
+        dataimage: hasImage ? datastate.results_json.data : ''
+      }})
     } else {
       console.log('Error: unknown format button')
     }
   }
 
   // JSON parameters object needs to be stringified for display in text box
-  componentDidMount() {
-    if (Object.keys(this.props.input_params).length > 0) {
-      if (this.props.input_params.hasOwnProperty("elems") && this.props.input_params.elems.includes("{")) {
-        this.props.input_params.elems = JSON.parse(this.props.input_params.elems)
-      }
-      this.setState({input_params_string: JSON.stringify(this.props.input_params)})
+  useEffect(() => {
+    //if (Object.keys(props.input_params).length === 0) {
+      setDatastate({...datastate, ...{results:''}})
+    //}
+    let newparams = props.input_params
+    if (props.input_params.hasOwnProperty("elems") && props.input_params.elems.includes("{")) {
+      const parsed_elems = JSON.parse(props.input_params.elems)
+      newparams = ({...newparams, ...{elems: parsed_elems}})
     }
-  }
-
-  // JSON parameters object needs to be stringified for display in text box
-  componentDidUpdate(prevProps) {
-    if (this.props.input_params !== prevProps.input_params) {
-      if (this.props.input_params.hasOwnProperty("elems") && this.props.input_params.elems.includes("{")) {
-        this.props.input_params.elems = JSON.parse(this.props.input_params.elems)
-      }
-      // empty bbox has to be converted from string to empty array in parameters string
-      if (this.props.input_params.hasOwnProperty('bbox') && this.props.input_params.bbox === "[]") {
-        this.props.input_params.bbox = []
-      }
-      this.setState({input_params_string: JSON.stringify(this.props.input_params)})
-      if (Object.keys(this.props.input_params).length === 0) {
-        this.setState({results:''})
-      }
+    // empty bbox has to be converted from string to empty array in parameters string
+    if (props.input_params.hasOwnProperty('bbox') && props.input_params.bbox === "[]") {
+      newparams = ({...newparams, ...{bbox: []}})
     }
-  }
+    setInput_params_string(JSON.stringify(newparams))
+    setIsCsv(props.input_params.output === 'csv')
+    setHasParamsError(false)
+    // eslint-disable-next-line
+  }, [props.input_params])
 
-  render() {
-    return (
-      <Paper elevation={0} style={{marginTop:"1em"}}>
-        <Typography variant="h6">
-          Parameters (JSON)
-          {this.state.input_params_string.length > 2 &&
-            <Button 
-              variant="contained"
-              size="small"
-              style={{marginLeft:"3em", backgroundColor:"limegreen"}}
-              onMouseDown={this.handleSubmit}
-            >
-              Submit
-            </Button>
-          }
-        </Typography>
-        <TextField
-          id="params"
-          value={this.state.input_params_string}
-          margin="dense"
-          variant="outlined"
-          multiline={true}
-          fullWidth={true}
-          inputProps={{style:{fontFamily:"Arial, Helvetica, sans-serif", fontSize:"95%"}}}
-          onChange={this.handleParamsChange}
-        />
+  // update url of server whenever the wstype or specific server selections change
+  useEffect(() => {
+    setDatastate({...datastate, ...{
+      results: "",
+      results_json: {},
+      dataimage: "",
+    }})
+    // eslint-disable-next-line
+}, [props.wstype, props.server])
 
-        {this.state.results.length > 0 && 
-          <div>
-            {this.state.results !== "image" &&
-              <ResultsButtons
-                handleFormat={this.handleFormat}
-                showButtons={!this.state.isCsv}
-                selectedButton={this.state.selectedButton}
-              />
-            }
-            <Paper 
-              elevation={0} 
-              style={{
-                border:"1px solid lightgray", 
-                margin:"0", 
-                padding:"5px", 
-                fontFamily:"Arial, Helvetica, sans-serif", 
-                fontSize:"95%"
-              }}
-            >
-              {this.state.dataimage.length > 0 &&
-                <div>
-                  <pre>
-                    {this.state.dataimage.includes("http") ? "Returned image" : "data (as image)"}
-                  </pre>
-                  <img src={this.state.dataimage} alt="map" />
-                </div>
-              }
-              {!this.state.dataimage.includes("http") &&
-                <pre style={{whiteSpace:this.state.format, wordBreak:"break-word"}}>
-                  {this.state.results}
-                </pre>
-              }
-            </Paper>
-          </div>
+  return (
+    <Box sx={{mt:"1em"}}>
+      <Typography variant="h6">
+        Parameters (JSON)
+        {input_params_string.length > 2 &&
+          <Button 
+            size="small"
+            variant="go"
+            onMouseDown={handleSubmit}
+          >
+            Submit
+          </Button>
         }
-      </Paper>
-    )
-  }
+      </Typography>
+      <TextField
+        id="params"
+        value={input_params_string}
+        margin="dense"
+        variant="outlined"
+        error={hasParamsError}
+        helperText={hasParamsError ? "Error in Parameters encoding" : ""}
+        multiline={true}
+        fullWidth={true}
+        inputProps={{sx:{fontSize:"90%",p:0}}}
+        InputProps={{
+          endAdornment: (
+            <InputAdornment position="end">
+              <CopyToClipboard cliptext={input_params_string} color="blue" />
+            </InputAdornment>
+          )
+        }}
+        onChange={handleParamsChange}
+      />
+      
+      {datastate.results.length > 0 && 
+        <div>
+          {datastate.results !== "image" &&
+            <ResultsButtons
+              handleFormat={handleFormat}
+              showButtons={!isCsv}
+              selectedButton={selectedButton}
+            />
+          }
+          <Paper variant="resultsPaper">
+            {datastate.dataimage.length > 0 &&
+              <div>
+                <Typography component="pre" variant="pre">
+                  {datastate.dataimage.includes("http") ? "Returned image" : "data (as image)"}
+                </Typography>
+                <img src={datastate.dataimage} alt="map" />
+              </div>
+            }
+            {!datastate.dataimage.includes("http") &&
+              <Typography component="pre" variant="pre">
+                {datastate.results}
+              </Typography>
+            }
+          </Paper>
+        </div>
+      }
+    </Box>
+  )
 }
+
+export default Output  
+
+/* old format pre results style (wordBreak:"normal",overflowWrap:"anywhere",whiteSpace:datastate.format} */

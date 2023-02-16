@@ -1,99 +1,129 @@
-import React, { Component } from 'react'
-import Typography from '@material-ui/core/Typography'
-import Grid from '@material-ui/core/Grid'
-import Button from '@material-ui/core/Button'
-import FormControlLabel from '@material-ui/core/FormControlLabel'
-import Switch from '@material-ui/core/Switch'
+import React, { useState, useEffect } from 'react'
+import Typography from '@mui/material/Typography'
+import Grid from '@mui/material/Grid'
+import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
+import FormControlLabel from '@mui/material/FormControlLabel'
+import Switch from '@mui/material/Switch'
 import RenderTextField from './RenderTextField'
 import DateSelection from './DateSelection'
-import { buildElement, buildImage } from './Builders.jsx'
+import { buildElement, buildImage, checkHasInterval, checkElemsError } from './builders.js'
 
-export default class GridData2Input extends Component { 
-  constructor(props) {
-    super(props)
-    this.state = {
-      loc: '',
-      state: '',
-      county: '',
-      bbox: '',
-      sdate: '',
-      edate: '',
-      date: '',
-      grid: '',
-      elems: '',
-      elem: '',
-      elem_string: '',
-      name: '',
-      base: '',
-      interval: '',
-      duration: '',
-      season_start: '',
-      reduce: '',
-      maxmissing: '',
-      area_reduce: '',
-      elem_sdate: '',
-      elem_edate: '',
-      meta: '',
-      output: '',
-      image: '',
-      info_only: '',
-      proj: '',
-      overlays: '',
-      interp: '',
-      cmap: '',
-      width: '',
-      height: '',
-      levels: '',
-      mapcontrols: '',
-      haveInterval: false,
-      includeImageControls: false,
+const GridData2Input = (props) => { 
+
+  const [ datastate, setDatastate ] = useState({
+    loc: '',
+    state: '',
+    county: '',
+    bbox: '',
+    sdate: '',
+    edate: '',
+    date: '',
+    grid: '',
+    elems: '',
+    meta: '',
+    output: '',
+    image: '',
+    elem: '',
+    elem_string: '',
+    name: '',
+    base: '',
+    interval: '',
+    duration: '',
+    season_start: '',
+    reduce: '',
+    maxmissing: '',
+    area_reduce: '',
+    elem_sdate: '',
+    elem_edate: '',
+    info_only: '',
+    proj: '',
+    overlays: '',
+    interp: '',
+    cmap: '',
+    width: '',
+    height: '',
+    levels: '',
+  })
+  
+  const [ notdly, setNotdly ] = useState(false)
+  const [ hasInterval, setHasInterval ] = useState(false)
+  const [ hasElemsError, setHasElemsError ] = useState(false)
+  const [ hasNestElemsError, setHasNestElemsError ] = useState(false)
+  const [ mapcontrols, setMapcontrols ] = useState(false)
+  
+  // images are currently disabled //
+  const includeImageControls = false
+  
+  const datafields = ['loc','state','bbox','sdate','edate','date','grid','elems','meta','output','image']
+  const imagefields = ['info_only','proj','overlays','interp','cmap','width','height','levels']
+  const elementKeys = Object.keys(datastate).filter(
+    item => (!["elem_string", ...datafields, ...imagefields].includes(item)
+  ))  
+
+  const updateParam = (update) => {
+    setDatastate({...datastate, ...update})
+    props.updateInputParams(update)
+  }
+
+  const updateElemBuild = (update) => {
+    setDatastate({...datastate, ...update})
+  }
+
+  const addElement = (event) => {
+    const action = event.currentTarget.id   //"add" or "replace"
+    const newElems = JSON.stringify(buildElement(elementKeys, datastate, action))
+    setDatastate({...datastate, ...{elems: newElems}})
+    props.updateInputParams({elems: newElems})
+    props.updateHelpFor("")
+  }
+
+  const clearElements = () => {
+    setDatastate({...datastate, ...{elems: ''}})
+    props.updateInputParams({elems: ""})
+    props.updateHelpFor("")
+    setHasInterval(false)
+    setHasElemsError(false)
+  }
+
+  const updateElems = (update) => {
+    setDatastate({...datastate, ...update})
+    const elemsError = checkElemsError(update.elems)
+    setHasElemsError(elemsError)
+    if (!elemsError) {
+      props.updateInputParams(update)
     }
-    this.datafields = ['loc','state','bbox','sdate','edate','date','grid','elems','meta','output','image']
-    this.imagefields = ['info_only','proj','overlays','interp','cmap','width','height','levels']
-    this.elementKeys = ["elem", "name", "base", "interval", "duration", "season_start", "reduce", "maxmissing", "area_reduce", "elem_sdate", "elem_edate"]
   }
 
-  addElement = () => {
-    const newElems = JSON.stringify(buildElement(this.elementKeys, this.state))
-    this.setState({
-      elems: newElems,
-      haveInterval: true,
-    })
-    this.props.updateInputParams({elems: newElems})
+  // images are currently disabled (includeImageControls: false)
+  const updateImage = (update) => {
+    const updatedstate = {...datastate, ...update}
+    setDatastate(updatedstate)
+    const image = buildImage(imagefields, updatedstate)
+    props.updateInputParams({image: image})
   }
 
-  nestElement = () => {
-    const elem = buildElement(this.elementKeys, this.state)
-    this.setState({
-      elem: elem[0],
-      elem_string: JSON.stringify(elem[0]),
-      name: '',
-      base: '',
-      interval: '',
-      duration: '',
-      season_start: '',
-      reduce: '',
-      maxmissing: '',
-      elem_sdate: '',
-      elem_edate: '',
-    })
-  }
+  // images are currently disabled (includeImageControls: false)
+  //const updateOutput = (update) => {
+  //  if (update.output === 'image') {
+  //    const image = buildImage(imagefields, datastate)
+  //    updateParam({output:"image", image:image})
+  //    setMapcontrols(true)
+  //  } else {
+  //    updateParam(update)
+  //  }
+  //}
 
-  clearElements = () => {
-    this.setState({
-      elems: '',
-      haveInterval:false,
-    })
-    this.props.updateInputParams({elems: ""})
+  // images are currently disabled (includeImageControls: false)
+  const handleMapControlClick = event => {
+    if (datastate.output !== 'image' || event.target.checked) {
+      const image = event.target.checked ? buildImage(imagefields, datastate) : ""
+      updateParam({image: image})
+      setMapcontrols(event.target.checked)
+    }
   }
-
-  replaceElements = () => {
-    this.setState({
-      elems: ''
-    }, this.addElement)
-  }
-
-  updateHelpFor = (helpFor) => {
+  
+  const updateHelpFor = (helpFor) => {
     if (helpFor === 'meta') {
       helpFor = 'grid_meta'
     } else if (helpFor === 'output') {
@@ -102,7 +132,7 @@ export default class GridData2Input extends Component {
       helpFor = 'grid2_elems'
     } else if (helpFor === 'name') {
       helpFor = 'grid2_name'
-    } else if (helpFor === 'reduce') {
+    } else if (helpFor === 'reduce') { 
       helpFor = 'grid2_reduce'
     } else if (helpFor === 'grid') {
       helpFor = 'grid2'
@@ -111,430 +141,407 @@ export default class GridData2Input extends Component {
     } else if (helpFor === 'elem_sdate' || helpFor === 'elem_edate') {
       helpFor = 'date'
     }
-    this.props.updateAppState({helpFor: helpFor})
-  }
-  
-  updateParam = (update) => {
-    this.setState(update)
-    this.props.updateInputParams(update)
+    props.updateHelpFor(helpFor)
   }
 
-  updateElems = (update) => {
-    if (update.elems.length === 0) {
-      this.setState({haveInterval: false})
-    }
-    this.updateParam(update)
+  const nestElement = () => {
+    const newElems = buildElement(elementKeys, datastate, "add")
+    const newElemString = JSON.stringify(newElems[0])
+    setDatastate({...datastate, ...{
+      elem: newElems[0],
+      elem_string: newElemString,
+      name: '',
+      base: '',
+      interval: '',
+      duration: '',
+      season_start: '',
+      reduce: '',
+      maxmissing: '',
+      elem_sdate: '',
+      elem_edate: '',
+    }})
   }
 
-  updateElemBuild = (update) => {
-    this.setState(update)
-  }
-
-  // images are currently disabled (this.state.includeImageControls: false)
-  updateImage = (update) => {
-    this.setState(update, () => {
-      const image = buildImage(this.imagefields, this.state)
-      this.updateParam({image: image})
-    })
-  }
- // images are currently disabled (this.state.includeImageControls: false)
-  updateOutput = (update) => {
-    if (update.output === 'image') {
-      const image = buildImage(this.imagefields, this.state)
-      this.updateParam({output:"image", image:image})
-      this.setState({
-        mapcontrols: true,
-      })
-    } else {
-      this.updateParam(update)
-    }
-  }
- // images are currently disabled (this.state.includeImageControls: false)
-  handleMapControlClick = event => {
-    if (this.state.output !== 'image' || event.target.checked) {
-      const image = event.target.checked ? buildImage(this.imagefields, this.state) : ""
-      this.updateParam({image: image})
-      this.setState({
-        mapcontrols: event.target.checked, 
-      })
+  const updateNestElement = (update) => {
+    try {
+      const newNest = JSON.parse(update.elem)
+      setHasNestElemsError(false)
+      setDatastate({...datastate, ...{
+        elem: newNest,
+        elem_string: update.elem,
+      }})
+    } catch {
+      setHasNestElemsError(true)
+      setDatastate({...datastate, ...{elem_string: update.elem}})
     }
   }
 
-  shouldComponentUpdate = (nextProps, nextState) => {
-    if (this.state !== nextState) {
-      return true
-    } else if (this.props !== nextProps) {
-      return this.datafields.some((key) => (nextProps.input_params.hasOwnProperty(key) && this.state[key] !== nextProps.input_params[key]) ||
-            (!nextProps.input_params.hasOwnProperty(key) && this.state[key] !== ''))
-    } else {
-      return false
-    }
-  }
-
-  componentDidUpdate(prevProps) {
-    if (this.props.input_params !== prevProps.input_params) {
-      this.datafields.forEach((key) => {
-        if (this.props.input_params.hasOwnProperty(key) && this.state[key] !== this.props.input_params[key]) {
-          if (key === 'elems' && typeof this.props.input_params.elems === 'object') {
-            this.setState({[key]: JSON.stringify(this.props.input_params[key])})
-          } else {
-            this.setState({[key]: this.props.input_params[key]})
-          }
-        } else if (!this.props.input_params.hasOwnProperty(key) && this.state[key] !== '') {
-          this.setState({[key]: ''})
+  // Update local variable storage whenever input_params updates
+  useEffect(() => {
+    let newstate= {}
+    datafields.forEach((key) => {
+      if (props.input_params.hasOwnProperty(key)) {
+        if (key === 'elems' && typeof props.input_params.elems === 'object') {
+          const strelems = JSON.stringify(props.input_params.elems)
+          newstate= ({...newstate, ...{[key]: strelems}})
+          setHasInterval(checkHasInterval({[key]: strelems}))
+          setHasElemsError(checkElemsError(strelems))
+        } else {
+          newstate= ({...newstate, ...{[key]: props.input_params[key]}})
         }
-      })
+      } else {
+        newstate = ({...newstate, ...{[key]: ''}})
+      }
+    })
+    setDatastate({...datastate, ...newstate})
+    // eslint-disable-next-line
+  }, [props.input_params])
+
+  // Check for change to notdly whenever duration or interval changes
+  useEffect(() => {
+    if (datastate.duration) {
+      setNotdly((datastate.duration.length === 3 && datastate.duration !== 'dly') || 
+        (datastate.duration.length > 0 && !isNaN(Number(datastate.duration)) && 
+        (datastate.duration !== "1" || (datastate.interval !== 'dly' && !(datastate.interval.includes('[') && datastate.interval.length === 7)))))
     }
-  }
+  }, [datastate.duration, datastate.interval])
 
-  render () {
-    const notdly = (this.state.duration.length === 3 && this.state.duration !== 'dly') || 
-      (this.state.duration.length > 0 && !isNaN(Number(this.state.duration)) && 
-      (this.state.duration !== "1" || (this.state.interval !== 'dly' && !(this.state.interval.includes('[') && this.state.interval.length === 7))))
-    return (
-        <div>
-          <Grid container>
-            <Grid item xs={4}>
-              <Typography variant="h6">
-                Required input
-              </Typography>
-              <Typography variant="caption">
-                Enter information for one of the grid selection types:
-              </Typography>
-              {this.state.state.length === 0 && 
-               this.state.county.length === 0 && 
-               this.state.bbox.length === 0 && 
-                <RenderTextField
-                  id="loc"
-                  fieldlabel="Point location"
-                  value={this.state.loc}
-                  options={{}}
-                  updateHelpFor={this.updateHelpFor}
-                  updateParam={this.updateParam}
-                />
-              }
-              {this.state.loc.length === 0 && 
-               this.state.county.length === 0 && 
-               this.state.bbox.length === 0 && 
-                <RenderTextField
-                  id="state"
-                  fieldlabel="State"
-                  value={this.state.state}
-                  options={{}}
-                  updateHelpFor={this.updateHelpFor}
-                  updateParam={this.updateParam}
-                />
-              }
-              {this.state.loc.length === 0 &&
-               this.state.state.length === 0 && 
-               this.state.bbox.length === 0 && 
-               <RenderTextField
-                  id="county"
-                  fieldlabel="County"
-                  value={this.state.county}
-                  options={{}}
-                  updateHelpFor={this.updateHelpFor}
-                  updateParam={this.updateParam}
-                />
-              }
-              {this.state.loc.length === 0 && 
-               this.state.county.length === 0 && 
-               this.state.state.length === 0 && 
-                <RenderTextField
-                  id="bbox"
-                  fieldlabel="Bounding box"
-                  value={this.state.bbox}
-                  options={{}}
-                  updateHelpFor={this.updateHelpFor}
-                  updateParam={this.updateParam}
-                />
-              }
-              <DateSelection
-                sdate={this.state.sdate}
-                edate={this.state.edate}
-                date={this.state.date}
-                updateHelpFor={this.updateHelpFor}
-                updateParam={this.updateParam}
-              />
-              <RenderTextField
-                id="grid"
-                fieldlabel="Grid id"
-                value={this.state.grid}
-                options={{}}
-                updateHelpFor={this.updateHelpFor}
-                updateParam={this.updateParam}
-              />
-              <RenderTextField
-                id="elems"
-                fieldlabel="Elements"
-                value={this.state.elems}
-                options={{style: {width:"90%"}, multiline: true, placeholder: "Build using Element setup"}}
-                updateHelpFor={this.updateHelpFor}
-                updateParam={this.updateElems}
-              />
-              {this.state.elems.includes("{") &&
-                <Button 
-                  size="small"
-                  variant="outlined"
-                  style={{marginTop:"0.5em", backgroundColor:"lightcyan"}}
-                  onMouseDown={this.clearElements}
-                >
-                  Clear elements
-                </Button>
-              }
-            </Grid>
+  return (
+    <div>
+      <Grid container>
+        <Grid item xs={4}>
+          <Typography variant="h6">
+            Required input
+          </Typography>
+          <Typography variant="caption">
+            Enter information for one of the grid selection types:
+          </Typography>
+          {datastate.state.length === 0 && 
+            datastate.county.length === 0 && 
+            datastate.bbox.length === 0 && 
+            <RenderTextField
+              id="loc"
+              fieldlabel="Point location"
+              value={datastate.loc}
+              updateHelpFor={updateHelpFor}
+              updateParam={updateParam}
+            />
+          }
+          {datastate.loc.length === 0 && 
+            datastate.county.length === 0 && 
+            datastate.bbox.length === 0 && 
+            <RenderTextField
+              id="state"
+              fieldlabel="State"
+              value={datastate.state}
+              updateHelpFor={updateHelpFor}
+              updateParam={updateParam}
+            />
+          }
+          {datastate.loc.length === 0 &&
+            datastate.state.length === 0 && 
+            datastate.bbox.length === 0 && 
+            <RenderTextField
+              id="county"
+              fieldlabel="County"
+              value={datastate.county}
+              updateHelpFor={updateHelpFor}
+              updateParam={updateParam}
+            />
+          }
+          {datastate.loc.length === 0 && 
+            datastate.county.length === 0 && 
+            datastate.state.length === 0 && 
+            <RenderTextField
+              id="bbox"
+              fieldlabel="Bounding box"
+              value={datastate.bbox}
+              updateHelpFor={updateHelpFor}
+              updateParam={updateParam}
+            />
+          }
+          <DateSelection
+            sdate={datastate.sdate}
+            edate={datastate.edate}
+            date={datastate.date}
+            updateHelpFor={updateHelpFor}
+            updateParam={updateParam}
+          />
+          <RenderTextField
+            id="grid"
+            fieldlabel="Grid id"
+            value={datastate.grid}
+            updateHelpFor={updateHelpFor}
+            updateParam={updateParam}
+          />
+          <RenderTextField
+            id="elems"
+            fieldlabel="Elements"
+            value={datastate.elems}
+            options={{
+              width:0.9,
+              multiline: true, 
+              placeholder: "Build using Element setup",
+              error: hasElemsError,
+              helperText: hasElemsError ? "Error in elements encoding" : "",
+            }}
+            updateHelpFor={updateHelpFor}
+            updateParam={updateElems}
+          />
+          {datastate.elems.includes("{") &&
+            <Button 
+              size="small"
+              variant="outlined"
+              onMouseDown={clearElements}
+            >
+              Clear elements
+            </Button>
+          }
+        </Grid>
 
-            <Grid item xs={4}>
-              <Typography variant="h6">
-                Element setup
-              </Typography>
-              {this.state.elem_string.length === 0 &&
-                <RenderTextField
-                  id="name"
-                  fieldlabel="Name"
-                  value={this.state.name}
-                  options={{}}
-                  updateHelpFor={this.updateHelpFor}
-                  updateParam={this.updateElemBuild}
-                />
-              }
-              {this.state.elem_string.length > 0 &&
-                <RenderTextField
-                  id="elem"
-                  fieldlabel="Elem"
-                  value={this.state.elem_string}
-                  options={{style: {width:"90%"}, multiline: true}}
-                  updateHelpFor={this.updateHelpFor}
-                  updateParam={this.updateElemBuild}
-                />
-              }
-              {this.state.name.includes("dd") &&
-                <RenderTextField
-                  id="base"
-                  fieldlabel="Base"
-                  value={this.state.base}
-                  options={{}}
-                  updateHelpFor={this.updateHelpFor}
-                  updateParam={this.updateElemBuild}
-                />
-              }
-              <RenderTextField
-                id="interval"
-                fieldlabel="Interval"
-                value={this.state.interval}
-                options={{disabled:this.state.haveInterval}}
-                updateHelpFor={this.updateHelpFor}
-                updateParam={this.updateElemBuild}
-              />
-              <RenderTextField
-                id="duration"
-                fieldlabel="Duration"
-                value={this.state.duration}
-                options={{}}
-                updateHelpFor={this.updateHelpFor}
-                updateParam={this.updateElemBuild}
-              />
-              {this.state.duration === 'std' &&
-                <RenderTextField
-                  id="season_start"
-                  fieldlabel="Season start"
-                  value={this.state.season_start}
-                  options={{required:true}}
-                  updateHelpFor={this.updateHelpFor}
-                  updateParam={this.updateElemBuild}
-                />
-              }
-              {notdly &&
-                <RenderTextField
-                  id="reduce"
-                  fieldlabel="Reduce"
-                  value={this.state.reduce}
-                  options={{required:true}}
-                  updateHelpFor={this.updateHelpFor}
-                  updateParam={this.updateElemBuild}
-                />
-              }
-              {notdly &&
-                <RenderTextField
-                  id="maxmissing"
-                  fieldlabel="Max missing"
-                  value={this.state.maxmissing}
-                  options={{}}
-                  updateHelpFor={this.updateHelpFor}
-                  updateParam={this.updateElemBuild}
-                />
-              }
-              <RenderTextField
-                id="elem_sdate"
-                fieldlabel="Start date"
-                value={this.state.elem_sdate}
-                options={{}}
-                updateHelpFor={this.updateHelpFor}
-                updateParam={this.updateElemBuild}
-              />
-              <RenderTextField
-                id="elem_edate"
-                fieldlabel="End date"
-                value={this.state.elem_edate}
-                options={{}}
-                updateHelpFor={this.updateHelpFor}
-                updateParam={this.updateElemBuild}
-              />
-              {(this.state.loc.length === 0 && this.state.county.length === 0) && 
-                <RenderTextField
-                  id="area_reduce"
-                  fieldlabel="Area reduction"
-                  value={this.state.area_reduce}
-                  options={{}}
-                  updateHelpFor={this.updateHelpFor}
-                  updateParam={this.updateElemBuild}
-                />
-              }
+        <Grid item xs={4}>
+          <Typography variant="h6">
+            Optional elements builder
+          </Typography>
+          {datastate.elem_string.length === 0 &&
+            <RenderTextField
+              id="name"
+              fieldlabel="Name"
+              value={datastate.name}
+              updateHelpFor={updateHelpFor}
+              updateParam={updateElemBuild}
+            />
+          }
+          {datastate.elem_string.length > 0 &&
+            <RenderTextField
+              id="elem"
+              fieldlabel="Elem"
+              value={datastate.elem_string}
+              options={{
+                width:0.9,
+                multiline: true,
+                error: hasNestElemsError,
+                helperText: hasNestElemsError ? "Error in elements encoding" : "",
+              }}
+              updateHelpFor={updateHelpFor}
+              updateParam={updateNestElement}
+            />
+          }
+          {datastate.name.includes("dd") &&
+            <RenderTextField
+              id="base"
+              fieldlabel="Base"
+              value={datastate.base}
+              updateHelpFor={updateHelpFor}
+              updateParam={updateElemBuild}
+            />
+          }
+          <RenderTextField
+            id="interval"
+            fieldlabel="Interval"
+            value={datastate.interval}
+            options={{disabled:hasInterval}}
+            updateHelpFor={updateHelpFor}
+            updateParam={updateElemBuild}
+          />
+          <RenderTextField
+            id="duration"
+            fieldlabel="Duration"
+            value={datastate.duration}
 
-              {(this.state.name.length > 0 || this.state.elem_string.length > 0) &&
-                <div>
-                  <Button 
-                    size="small"
-                    variant="outlined"
-                    style={{marginTop:"0.5em", backgroundColor:"lightcyan"}}
-                    onMouseDown={this.nestElement}
-                  >
-                    Nest
-                  </Button>
-                  <Button 
-                    size="small"
-                    variant="outlined"
-                    style={{marginTop:"0.5em", marginLeft:"1em", backgroundColor:"lightcyan"}}
-                    onMouseDown={this.addElement}
-                  >
-                    Add
-                  </Button>
-                </div>
-              }
-              {this.state.name.length > 0 && this.state.elems.includes("{") &&
-                <Button 
-                  size="small"
-                  variant="outlined"
-                  style={{marginTop:"0.5em", backgroundColor:"lightcyan"}}
-                  onMouseDown={this.replaceElements}
-                >
-                  Replace elements
-                </Button>
-              }
-            </Grid>
+            updateHelpFor={updateHelpFor}
+            updateParam={updateElemBuild}
+          />
+          {datastate.duration === 'std' &&
+            <RenderTextField
+              id="season_start"
+              fieldlabel="Season start"
+              value={datastate.season_start}
+              options={{required:true}}
+              updateHelpFor={updateHelpFor}
+              updateParam={updateElemBuild}
+            />
+          }
+          <RenderTextField
+            id="reduce"
+            fieldlabel="Reduce"
+            value={datastate.reduce}
+            options={{required:notdly}}
+            updateHelpFor={updateHelpFor}
+            updateParam={updateElemBuild}
+          />
+          {notdly &&
+            <RenderTextField
+              id="maxmissing"
+              fieldlabel="Max missing"
+              value={datastate.maxmissing}
+              updateHelpFor={updateHelpFor}
+              updateParam={updateElemBuild}
+            />
+          }
+          <RenderTextField
+            id="elem_sdate"
+            fieldlabel="Start date"
+            value={datastate.elem_sdate}
+            updateHelpFor={updateHelpFor}
+            updateParam={updateElemBuild}
+          />
+          <RenderTextField
+            id="elem_edate"
+            fieldlabel="End date"
+            value={datastate.elem_edate}
+            updateHelpFor={updateHelpFor}
+            updateParam={updateElemBuild}
+          />
+          {(datastate.loc.length === 0 && datastate.county.length === 0) && 
+            <RenderTextField
+              id="area_reduce"
+              fieldlabel="Area reduction"
+              value={datastate.area_reduce}
+              updateHelpFor={updateHelpFor}
+              updateParam={updateElemBuild}
+            />
+          }
 
-            <Grid item xs={4}>
-              <Typography variant="h6">
-                Optional input
-              </Typography>
-              <RenderTextField
-                id="meta"
-                fieldlabel="Meta options"
-                value={this.state.meta}
-                options={{style: {width:"95%"}}}
-                updateHelpFor={this.updateHelpFor}
-                updateParam={this.updateParam}
-              />
-              <RenderTextField
-                id="output"
-                fieldlabel="Output type"
-                value={this.state.output}
-                options={{disabled: this.state.meta.length && this.state.output === 'json' ? true : false}}
-                updateHelpFor={this.updateHelpFor}
-                updateParam={this.updateParam}
-              />
-              {this.state.includeImageControls &&
-                <div>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        value={this.state.mapcontrols}
-                        onChange={this.handleMapControlClick}
-                        checked={this.state.mapcontrols}
-                        color="primary"
-                      />
-                    }
-                    label="Map settings"
+          {(datastate.name.length > 0 || datastate.elem_string.length > 0) &&
+            <div>
+              <Button 
+                size="small"
+                variant="outlined"
+                onMouseDown={nestElement}
+              >
+                Nest
+              </Button>
+              <Button 
+                id="add"
+                size="small"
+                variant="outlined"
+                sx={{ml:1}}
+                onMouseDown={addElement}
+              >
+                Add
+              </Button>
+            </div>
+          }
+          {datastate.name.length > 0 && datastate.elems.includes("{") &&
+            <Button 
+              id="replace"
+              size="small"
+              variant="outlined"
+              onMouseDown={addElement}
+            >
+              Replace elements
+            </Button>
+          }
+        </Grid>
+
+        <Grid item xs={4}>
+          <Typography variant="h6">
+            Optional input
+          </Typography>
+          <RenderTextField
+            id="meta"
+            fieldlabel="Meta options"
+            value={datastate.meta}
+            options={{width:0.95}}
+            updateHelpFor={updateHelpFor}
+            updateParam={updateParam}
+          />
+          <RenderTextField
+            id="output"
+            fieldlabel="Output type"
+            value={datastate.output}
+            options={{disabled: datastate.meta.length && datastate.output === 'json' ? true : false}}
+            updateHelpFor={updateHelpFor}
+            updateParam={updateParam}
+          />
+          {includeImageControls &&
+            <div>
+              <FormControlLabel
+                control={
+                  <Switch
+                    value={mapcontrols}
+                    onChange={handleMapControlClick}
+                    checked={mapcontrols}
+                    color="primary"
                   />
-                  {this.state.mapcontrols &&
-                    <div>
-                      {this.state.output !== 'image' &&
-                        <RenderTextField
-                          id="info_only"
-                          fieldlabel="Info only"
-                          value={this.state.info_only}
-                          options={{style: {marginLeft:"2em"}}}
-                          updateHelpFor={this.updateHelpFor}
-                          updateParam={this.updateImage}
-                        />
-                      }
-                      <RenderTextField
-                        id="proj"
-                        fieldlabel="Proj"
-                        value={this.state.proj}
-                        options={{style: {marginLeft:"2em"}}}
-                        updateHelpFor={this.updateHelpFor}
-                        updateParam={this.updateImage}
-                      />
-                      <RenderTextField
-                        id="overlays"
-                        fieldlabel="Overlays"
-                        value={this.state.overlays}
-                        options={{style: {marginLeft:"2em"}}}
-                        updateHelpFor={this.updateHelpFor}
-                        updateParam={this.updateImage}
-                      />
-                      <RenderTextField
-                        id="interp"
-                        fieldlabel="Interp"
-                        value={this.state.interp}
-                        options={{style: {marginLeft:"2em"}}}
-                        updateHelpFor={this.updateHelpFor}
-                        updateParam={this.updateImage}
-                      />
-                      <RenderTextField
-                        id="cmap"
-                        fieldlabel="Cmap"
-                        value={this.state.cmap}
-                        options={{style: {marginLeft:"2em"}}}
-                        updateHelpFor={this.updateHelpFor}
-                        updateParam={this.updateImage}
-                      />
-                      {this.state.height.length === 0 &&
-                        <RenderTextField
-                          id="width"
-                          fieldlabel="Width"
-                          value={this.state.width}
-                          options={{style: {marginLeft:"2em"}, required: this.state.mapcontrols}}
-                          updateHelpFor={this.updateHelpFor}
-                          updateParam={this.updateImage}
-                        />
-                      }
-                      {this.state.width.length === 0 &&
-                        <RenderTextField
-                          id="height"
-                          fieldlabel="Height"
-                          value={this.state.height}
-                          options={{style: {marginLeft:"2em"}, required: this.state.mapcontrols}}
-                          updateHelpFor={this.updateHelpFor}
-                          updateParam={this.updateImage}
-                        />
-                      }
-                      <RenderTextField
-                        id="levels"
-                        fieldlabel="Levels"
-                        value={this.state.levels}
-                        options={{style: {marginLeft:"2em"}}}
-                        updateHelpFor={this.updateHelpFor}
-                        updateParam={this.updateImage}
-                      />
-                    </div>
+                }
+                label="Map settings"
+              />
+              {mapcontrols &&
+                <Box sx={{pl:"1em"}}>
+                  {datastate.output !== 'image' &&
+                    <RenderTextField
+                      id="info_only"
+                      fieldlabel="Info only"
+                      value={datastate.info_only}
+                      updateHelpFor={updateHelpFor}
+                      updateParam={updateImage}
+                    />
                   }
-                </div>
+                  <RenderTextField
+                    id="proj"
+                    fieldlabel="Proj"
+                    value={datastate.proj}
+                    updateHelpFor={updateHelpFor}
+                    updateParam={updateImage}
+                  />
+                  <RenderTextField
+                    id="overlays"
+                    fieldlabel="Overlays"
+                    value={datastate.overlays}
+                    updateHelpFor={updateHelpFor}
+                    updateParam={updateImage}
+                  />
+                  <RenderTextField
+                    id="interp"
+                    fieldlabel="Interp"
+                    value={datastate.interp}
+                    updateHelpFor={updateHelpFor}
+                    updateParam={updateImage}
+                  />
+                  <RenderTextField
+                    id="cmap"
+                    fieldlabel="Cmap"
+                    value={datastate.cmap}
+                    updateHelpFor={updateHelpFor}
+                    updateParam={updateImage}
+                  />
+                  {datastate.height.length === 0 &&
+                    <RenderTextField
+                      id="width"
+                      fieldlabel="Width"
+                      value={datastate.width}
+                      options={{required: mapcontrols}}
+                      updateHelpFor={updateHelpFor}
+                      updateParam={updateImage}
+                    />
+                  }
+                  {datastate.width.length === 0 &&
+                    <RenderTextField
+                      id="height"
+                      fieldlabel="Height"
+                      value={datastate.height}
+                      options={{required: mapcontrols}}
+                      updateHelpFor={updateHelpFor}
+                      updateParam={updateImage}
+                    />
+                  }
+                  <RenderTextField
+                    id="levels"
+                    fieldlabel="Levels"
+                    value={datastate.levels}
+                    updateHelpFor={updateHelpFor}
+                    updateParam={updateImage}
+                  />
+                </Box>
               }
-            </Grid>
-          </Grid>
-      </div>
-    )
-  }
+            </div>
+          }
+        </Grid>
+      </Grid>
+    </div>
+  )
 }
+
+export default GridData2Input

@@ -1,149 +1,117 @@
-import React, { Component } from 'react'
-import Typography from '@material-ui/core/Typography'
-import Grid from '@material-ui/core/Grid'
-import MenuItem from '@material-ui/core/MenuItem'
-import TextField from '@material-ui/core/TextField'
+import React, { useState, useEffect } from 'react'
+import Typography from '@mui/material/Typography'
+import Grid from '@mui/material/Grid'
+import MenuItem from '@mui/material/MenuItem'
+import TextField from '@mui/material/TextField'
 import RenderTextField from './RenderTextField'
-//import { buildInputParams } from './Builders.jsx'
 
-export default class GeneralInput extends Component { 
-  constructor(props) {
-    super(props)
-    this.state = {
-      state: '',
-      bbox: '',
-      id: '',
-      meta: '',
-      generalArea: '',
-    }
-    this.paramfields = Object.keys(this.state).filter(item => !["generalArea"].includes(item))
-  }
+const GeneralInput = (props) => { 
+  const [ datastate, setDatastate ] = useState({
+    state: '',
+    bbox: '',
+    id: '',
+    meta: '',
+  })
+  const [ generalArea, setGeneralArea ] = useState("state")
+  const paramfields = Object.keys(datastate)
 
-  updateHelpFor = (helpFor) => {
-    if (helpFor === 'id') {
-      helpFor = 'general_id'
-    } else if (helpFor === 'meta') {
-      helpFor = "general_meta"
-    }
-    this.props.updateAppState({helpFor: helpFor})
+  const updateParam = (update) => {
+    setDatastate({...datastate, ...update})
+    props.updateInputParams(update)
   }
   
-  updateArea = event => {
-    this.setState({
-      generalArea: event.target.value
+  const updateArea = (event) => {
+    setGeneralArea(event.target.value)
+    props.updateGeneralArea(event.target.value)
+  }
+
+  useEffect(() => {
+    let newstate = {}
+    paramfields.forEach((key) => {
+      if (props.input_params.hasOwnProperty(key)) {
+        newstate = ({...newstate, ...{[key]: props.input_params[key]}})
+      } else {
+        newstate = ({...newstate, ...{[key]: ''}})
+      }
     })
-    this.props.updateAppState({generalArea: event.target.value})
-  }
+    setDatastate(newstate)
+    // eslint-disable-next-line
+  }, [props.input_params])
 
-  updateParam = (update) => {
-    this.setState(update)
-    this.props.updateInputParams(update)
-  }
+  return (
+    <div>
+      <Grid container>
+        <Grid item xs={4}>
+          <Typography variant="h6">
+            Required input
+          </Typography>
 
-  componentDidMount = () => {
-    // set to default and update in App
-    this.updateArea({target:{value:'state'}})
-  }
+          <TextField
+            id="general_area"
+            select
+            label="Area"
+            value={generalArea}
+            onChange={updateArea}
+            onFocus={() => props.updateHelpFor("general_area")}
+            onBlur={() => props.updateHelpFor(null)}
+            margin="dense"
+            variant="outlined"
+            size="small"
+          >
+            <MenuItem sx={{fontSize:"90%"}} value={'state'}>state</MenuItem>
+            <MenuItem sx={{fontSize:"90%"}} value={'county'}>county</MenuItem>
+            <MenuItem sx={{fontSize:"90%"}} value={'climdiv'}>climdiv</MenuItem>
+            <MenuItem sx={{fontSize:"90%"}} value={'cwa'}>cwa</MenuItem>
+            <MenuItem sx={{fontSize:"90%"}} value={'basin'}>basin</MenuItem>
+          </TextField>
+          <br />
+          <Typography variant="caption">
+            Enter one of the following:
+          </Typography>
+          {datastate.id.length === 0 && datastate.bbox.length === 0 &&
+            <RenderTextField
+              id="state"
+              fieldlabel="State"
+              value={datastate.state}
+              updateHelpFor={props.updateHelpFor}
+              updateParam={updateParam}
+            />
+          }
+          {datastate.state.length === 0 && datastate.bbox.length === 0 &&
+            <RenderTextField
+              id="id"
+              fieldlabel="ID"
+              value={datastate.id}
+              updateHelpFor={() => props.updateHelpFor("general_id")}
+              updateParam={updateParam}
+            />
+          }
+          {datastate.state.length === 0 && datastate.id.length === 0 &&
+            <RenderTextField
+              id="bbox"
+              fieldlabel="Bounding box"
+              value={datastate.bbox}
+              updateHelpFor={props.updateHelpFor}
+              updateParam={updateParam}
+            />
+          }
+        </Grid>
 
-  shouldComponentUpdate = (nextProps, nextState) => {
-    if (this.state !== nextState) {
-      return true
-    } else if (this.props !== nextProps) {
-      return this.paramfields.some((key) => (nextProps.input_params.hasOwnProperty(key) && this.state[key] !== nextProps.input_params[key]) ||
-            (!nextProps.input_params.hasOwnProperty(key) && this.state[key] !== ''))
-    } else {
-      return false
-    }
-  }
-
-  componentDidUpdate(prevProps) {
-    if (this.props.input_params !== prevProps.input_params) {
-      this.paramfields.forEach((key) => {
-        if (this.props.input_params.hasOwnProperty(key) && this.state[key] !== this.props.input_params[key]) {
-           this.setState({[key]: this.props.input_params[key]})
-        } else if (!this.props.input_params.hasOwnProperty(key) && this.state[key] !== '') {
-          this.setState({[key]: ''})
-        }
-      })
-    }
-  }
-
-  render () {
-    return (
-        <div>
-          <Grid container>
-            <Grid item xs={4}>
-              <Typography variant="h6">
-                Required input
-              </Typography>
-
-              <TextField
-                id="general-area"
-                select
-                label="Area"
-                value={this.state.generalArea}
-                onChange={this.updateArea}
-                SelectProps={{ style: {"fontSize":"90%"} }}
-                margin="dense"
-                variant="outlined"
-              >
-                <MenuItem style={{fontSize:"90%"}} value={'state'}>state</MenuItem>
-                <MenuItem style={{fontSize:"90%"}} value={'county'}>county</MenuItem>
-                <MenuItem style={{fontSize:"90%"}} value={'climdiv'}>climdiv</MenuItem>
-                <MenuItem style={{fontSize:"90%"}} value={'cwa'}>cwa</MenuItem>
-                <MenuItem style={{fontSize:"90%"}} value={'basin'}>basin</MenuItem>
-              </TextField>
-
-              <Typography variant="caption">
-                Enter one of the following:
-              </Typography>
-              {this.state.id.length === 0 && this.state.bbox.length === 0 &&
-                <RenderTextField
-                  id="state"
-                  fieldlabel="State"
-                  value={this.state.state}
-                  options={{}}
-                  updateHelpFor={this.updateHelpFor}
-                  updateParam={this.updateParam}
-                />
-              }
-              {this.state.state.length === 0 && this.state.bbox.length === 0 &&
-                <RenderTextField
-                  id="id"
-                  fieldlabel="ID"
-                  value={this.state.id}
-                  options={{}}
-                  updateHelpFor={this.updateHelpFor}
-                  updateParam={this.updateParam}
-                />
-              }
-              {this.state.state.length === 0 && this.state.id.length === 0 &&
-                <RenderTextField
-                  id="bbox"
-                  fieldlabel="Bounding box"
-                  value={this.state.bbox}
-                  options={{}}
-                  updateHelpFor={this.updateHelpFor}
-                  updateParam={this.updateParam}
-                />
-              }
-            </Grid>
-
-            <Grid item xs={4}>
-              <Typography variant="h6">
-                Optional input
-              </Typography>
-              <RenderTextField
-                id="meta"
-                fieldlabel="Meta options"
-                value={this.state.meta}
-                options={{}}
-                updateHelpFor={this.updateHelpFor}
-                updateParam={this.updateParam}
-              />
-            </Grid>
-          </Grid>
-      </div>
-    )
-  }
+        <Grid item xs={4}>
+          <Typography variant="h6">
+            Optional input
+          </Typography>
+          <RenderTextField
+            id="meta"
+            fieldlabel="Meta options"
+            value={datastate.meta}
+            updateHelpFor={() => props.updateHelpFor("general_meta")}
+            updateParam={updateParam}
+          />
+        </Grid>
+      </Grid>
+    </div>
+  )
 }
+
+export default GeneralInput

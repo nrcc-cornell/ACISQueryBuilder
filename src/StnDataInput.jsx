@@ -1,402 +1,376 @@
-import React, { Component } from 'react'
-import Typography from '@material-ui/core/Typography'
-import Grid from '@material-ui/core/Grid'
-import Button from '@material-ui/core/Button'
+import React, { useState, useEffect } from 'react'
+import Typography from '@mui/material/Typography'
+import Grid from '@mui/material/Grid'
+import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
 import RenderTextField from './RenderTextField'
 import DateSelection from './DateSelection'
 import QueryExplain from './QueryExplain'
-import { buildElement } from './Builders.jsx'
+import { buildElement, checkHasInterval, checkElemsError } from './builders.js'
 
-export default class StnDataInput extends Component { 
-  constructor(props) {
-    super(props)
-    this.state = {
-      sid: '',
-      sdate: '',
-      edate: '',
-      date: '',
-      elems: '',
-      name: '',
-      base: '',
-      interval: '',
-      duration: '',
-      season_start: '',
-      add: '',
-      reduce: '',
-      reduce_add: '',
-      reduce_n: '',
-      reduce_run_maxmissing: '',
-      maxmissing: '',
-      smry: '',
-      smry_add: '',
-      smry_n: '',
-      smry_run_maxmissing: '',
-      smry_only: '',
-      normal: '',
-      groupby: '',
-      prec: '',
-      meta: '',
-      output: '',
-      haveInterval: false,
-    }
-    this.datafields = ['sid','sdate','edate','date','elems','meta','output']
-    this.elementKeys = Object.keys(this.state).filter(
-      item => (!["haveInterval",...this.datafields].includes(item)
-    ))
+const StnDataInput = (props) => { 
+  const [ datastate, setDatastate ] = useState({
+    sid: '',
+    sdate: '',
+    edate: '',
+    date: '',
+    elems: '',
+    meta: '',
+    output: '',
+    name: '',
+    base: '',
+    interval: '',
+    duration: '',
+    season_start: '',
+    add: '',
+    reduce: '',
+    reduce_add: '',
+    reduce_n: '',
+    reduce_run_maxmissing: '',
+    maxmissing: '',
+    smry: '',
+    smry_add: '',
+    smry_n: '',
+    smry_run_maxmissing: '',
+    smry_only: '',
+    normal: '',
+    groupby: '',
+    prec: '',
+  })
+
+  const [ notdly, setNotdly ] = useState(false)
+  const [ hasInterval, setHasInterval ] = useState(false)
+  const [ hasElemsError, setHasElemsError ] = useState(false)
+  
+  const datafields = ['sid','sdate','edate','date','elems','meta','output']
+  const elementKeys = Object.keys(datastate).filter(
+    item => (!datafields.includes(item)
+  ))
+
+  const updateParam = (update) => {
+    setDatastate({...datastate, ...update})
+    props.updateInputParams(update)
   }
 
-  addElement = () => {
-    const newElems = JSON.stringify(buildElement(this.elementKeys, this.state))
-    this.setState({
-      elems: newElems,
-      haveInterval: this.state.interval !== "",
-    })
-    this.props.updateInputParams({elems: newElems})
-    this.props.updateAppState({helpFor: null})
-  }
-
-  clearElements = () => {
-    this.setState({
-      elems: '',
-      haveInterval: false
-    })
-    this.props.updateInputParams({elems: ""})
-    this.props.updateAppState({helpFor: null})
-  }
-
-  replaceElements = () => {
-    this.setState({
-      elems: ''
-    }, this.addElement)
-  }
-
-  updateHelpFor = (helpFor) => {
-    this.props.updateAppState({helpFor: helpFor})
+  const updateElemBuild = (update) => {
+    setDatastate({...datastate, ...update})
   }
   
-  updateParam = (update) => {
-    this.setState(update)
-    this.props.updateInputParams(update)
+  const addElement = (event) => {
+    const action = event.currentTarget.id   //"add" or "replace"
+    const newElems = JSON.stringify(buildElement(elementKeys, datastate, action))
+    setDatastate({...datastate, ...{elems: newElems}})
+    props.updateInputParams({elems: newElems})
+    props.updateHelpFor("")
   }
 
-  updateElems = (update) => {
-    if (update.elems.length === 0) {
-      this.setState({haveInterval: false})
-    }
-    this.updateParam(update)
+  const clearElements = () => {
+    setDatastate({...datastate, ...{elems: ''}})
+    props.updateInputParams({elems: ""})
+    props.updateHelpFor("")
+    setHasInterval(false)
+    setHasElemsError(false)
   }
 
-  updateElemBuild = (update) => {
-    this.setState(update)
-  }
-
-  shouldComponentUpdate = (nextProps, nextState) => {
-    if (this.state !== nextState) {
-      return true
-    } else if (this.props !== nextProps) {
-      return this.datafields.some((key) => (nextProps.input_params.hasOwnProperty(key) && this.state[key] !== nextProps.input_params[key]) ||
-            (!nextProps.input_params.hasOwnProperty(key) && this.state[key] !== ''))
-    } else {
-      return false
+  const updateElems = (update) => {
+    setDatastate({...datastate, ...update})
+    const elemsError = checkElemsError(update.elems)
+    setHasElemsError(elemsError)
+    if (!elemsError) {
+      props.updateInputParams(update)
     }
   }
 
-  componentDidUpdate(prevProps) {
-    if (this.props.input_params !== prevProps.input_params) {
-      this.datafields.forEach((key) => {
-        if (this.props.input_params.hasOwnProperty(key) && this.state[key] !== this.props.input_params[key]) {
-          if (key === 'elems' && typeof this.props.input_params.elems === 'object') {
-            this.setState({[key]: JSON.stringify(this.props.input_params[key])})
-          } else {
-            this.setState({[key]: this.props.input_params[key]})
-          }
-        } else if (!this.props.input_params.hasOwnProperty(key) && this.state[key] !== '') {
-          this.setState({[key]: ''})
+  // Update local variable storage whenever input_params updates
+  useEffect(() => {
+    let newstate= {}
+    datafields.forEach((key) => {
+      if (props.input_params.hasOwnProperty(key)) {
+        if (key === 'elems' && typeof props.input_params.elems === 'object') {
+          const strelems = JSON.stringify(props.input_params.elems)
+          newstate= ({...newstate, ...{[key]: strelems}})
+          setHasInterval(checkHasInterval({[key]: strelems}))
+          setHasElemsError(checkElemsError(strelems))
+        } else {
+          newstate= ({...newstate, ...{[key]: props.input_params[key]}})
         }
-      })
+      } else {
+        newstate = ({...newstate, ...{[key]: ''}})
+      }
+    })
+    setDatastate({...datastate, ...newstate})
+    // eslint-disable-next-line
+  }, [props.input_params])
+
+  // Check for change to notdly whenever duration or interval changes
+  useEffect(() => {
+    if (datastate.duration) {
+      setNotdly((datastate.duration.length === 3 && datastate.duration !== 'dly') || 
+        (datastate.duration.length > 0 && !isNaN(Number(datastate.duration)) && 
+        (datastate.duration !== "1" || (datastate.interval !== 'dly' && !(datastate.interval.includes('[') && datastate.interval.length === 7)))))
     }
-  }
+  }, [datastate.duration, datastate.interval])
 
-  render () {
-    const notdly = (this.state.duration.length === 3 && this.state.duration !== 'dly') || 
-      (this.state.duration.length > 0 && !isNaN(Number(this.state.duration)) && 
-      (this.state.duration !== "1" || (this.state.interval !== 'dly' && !(this.state.interval.includes('[') && this.state.interval.length === 7))))
-    return (
-      <Grid container>
-        <Grid item xs={4}>
-          <Typography variant="h6">
-            Required input
-          </Typography>
-          <RenderTextField
-            id="sid"
-            fieldlabel="Station ID"
-            value={this.state.sid}
-            options={{}}
-            updateHelpFor={this.updateHelpFor}
-            updateParam={this.updateParam}
-          />
-          <DateSelection
-            sdate={this.state.sdate}
-            edate={this.state.edate}
-            date={this.state.date}
-            updateHelpFor={this.updateHelpFor}
-            updateParam={this.updateParam}
-          />
-          <RenderTextField
-            id="elems"
-            fieldlabel="Elements"
-            value={this.state.elems}
-            options={{style: {width:"90%"}, multiline: true, placeholder: "Enter directly or build using Element setup"}}
-            updateHelpFor={this.updateHelpFor}
-            updateParam={this.updateElems}
-          />
-          {this.state.elems.includes("{") &&
-            <Button 
-              size="small"
-              variant="outlined"
-              style={{marginTop:"0.5em", backgroundColor:"lightcyan"}}
-              onMouseDown={this.clearElements}
-            >
-              Clear elements
-            </Button>
-          }
-          <QueryExplain
-            input_params={this.props.input_params}
-            wstype="StnData"
-          />
-        </Grid>
+  return (
+    <Grid container>
+      <Grid item xs={4}>
+        <Typography variant="h6">
+          Required input
+        </Typography>
+        <RenderTextField
+          id="sid"
+          fieldlabel="Station ID"
+          value={datastate.sid}
+          updateHelpFor={props.updateHelpFor}
+          updateParam={updateParam}
+        />
+        <DateSelection
+          sdate={datastate.sdate}
+          edate={datastate.edate}
+          date={datastate.date}
+          updateHelpFor={props.updateHelpFor}
+          updateParam={updateParam}
+        />
+        <RenderTextField
+          id="elems"
+          fieldlabel="Elements"
+          value={datastate.elems}
+          options={{
+            width:0.90,
+            multiline: true, 
+            placeholder: "Enter directly or build using Element setup",
+            error: hasElemsError,
+            helperText: hasElemsError ? "Error in elements encoding" : "",
+          }}
+          updateHelpFor={props.updateHelpFor}
+          updateParam={updateElems}
+        />
+        {datastate.elems.includes("{") &&
+          <Button 
+            size="small"
+            variant="outlined"
+            onMouseDown={clearElements}
+          >
+            Clear elements
+          </Button>
+        }
+        <QueryExplain
+          input_params={props.input_params}
+          wstype="StnData"
+        />
+      </Grid>
 
-        <Grid item xs={4}>
-          <Typography variant="h6">
-            Optional element setup
-          </Typography>
+      <Grid item xs={4}>
+        <Typography variant="h6">
+          Optional elements builder
+        </Typography>
+        <RenderTextField
+          id="name"
+          fieldlabel="Name"
+          value={datastate.name}
+          updateHelpFor={props.updateHelpFor}
+          updateParam={updateElemBuild}
+        />
+        {datastate.name.includes("dd") &&
           <RenderTextField
-            id="name"
-            fieldlabel="Name"
-            value={this.state.name}
-            options={{}}
-            updateHelpFor={this.updateHelpFor}
-            updateParam={this.updateElemBuild}
+            id="base"
+            fieldlabel="Base"
+            value={datastate.base}
+            updateHelpFor={props.updateHelpFor}
+            updateParam={updateElemBuild}
           />
-          {this.state.name.includes("dd") &&
-            <RenderTextField
-              id="base"
-              fieldlabel="Base"
-              value={this.state.base}
-              options={{}}
-              updateHelpFor={this.updateHelpFor}
-              updateParam={this.updateElemBuild}
-            />
-          }
+        }
+        <RenderTextField
+          id="interval"
+          fieldlabel="Interval"
+          value={datastate.interval}
+          options={{disabled:hasInterval}}
+          updateHelpFor={props.updateHelpFor}
+          updateParam={updateElemBuild}
+        />
+        <RenderTextField
+          id="duration"
+          fieldlabel="Duration"
+          value={datastate.duration}
+          updateHelpFor={props.updateHelpFor}
+          updateParam={updateElemBuild}
+        />
+        {datastate.duration === 'std' &&
           <RenderTextField
-            id="interval"
-            fieldlabel="Interval"
-            value={this.state.interval}
-            options={{disabled:this.state.haveInterval}}
-            updateHelpFor={this.updateHelpFor}
-            updateParam={this.updateElemBuild}
+            id="season_start"
+            fieldlabel="Season start"
+            value={datastate.season_start}
+            options={{required:true}}
+            updateHelpFor={props.updateHelpFor}
+            updateParam={updateElemBuild}
           />
+        }
+        {!notdly &&
           <RenderTextField
-            id="duration"
-            fieldlabel="Duration"
-            value={this.state.duration}
-            options={{}}
-            updateHelpFor={this.updateHelpFor}
-            updateParam={this.updateElemBuild}
+            id="add"
+            fieldlabel="Add"
+            value={datastate.add}
+            updateHelpFor={props.updateHelpFor}
+            updateParam={updateElemBuild}
           />
-          {this.state.duration === 'std' &&
+        }
+        <RenderTextField
+          id="reduce"
+          fieldlabel="Reduce"
+          value={datastate.reduce}
+          options={{required:notdly}}
+          updateHelpFor={props.updateHelpFor}
+          updateParam={updateElemBuild}
+        />
+        {datastate.reduce.length > 0 && 
+          <Box sx={{ml:1.5}}>
             <RenderTextField
-              id="season_start"
-              fieldlabel="Season start"
-              value={this.state.season_start}
-              options={{required:true}}
-              updateHelpFor={this.updateHelpFor}
-              updateParam={this.updateElemBuild}
+              id="reduce_add"
+              fieldlabel="- Reduce Add"
+              value={datastate.reduce_add}
+              updateHelpFor={props.updateHelpFor}
+              updateParam={updateElemBuild}
             />
-          }
-          {!notdly &&
-            <RenderTextField
-              id="add"
-              fieldlabel="Add"
-              value={this.state.add}
-              options={{}}
-              updateHelpFor={this.updateHelpFor}
-              updateParam={this.updateElemBuild}
-            />
-          }
-          {notdly &&
-            <RenderTextField
-              id="reduce"
-              fieldlabel="Reduce"
-              value={this.state.reduce}
-              options={{required:true}}
-              updateHelpFor={this.updateHelpFor}
-              updateParam={this.updateElemBuild}
-            />
-          }
-          {this.state.reduce.length > 0 && notdly &&
-            <div>
-              <RenderTextField
-                id="reduce_add"
-                fieldlabel="- Reduce Add"
-                value={this.state.reduce_add}
-                options={{style:{marginLeft:"2em"}}}
-                updateHelpFor={this.updateHelpFor}
-                updateParam={this.updateElemBuild}
-              />
-            </div>
-          }
-          {this.state.reduce.length > 0 && notdly &&
             <RenderTextField
               id="reduce_n"
               fieldlabel="- Reduce Number"
-              value={this.state.reduce_n}
-              options={{style:{marginLeft:"2em"}}}
-              updateHelpFor={this.updateHelpFor}
-              updateParam={this.updateElemBuild}
+              value={datastate.reduce_n}
+              updateHelpFor={props.updateHelpFor}
+              updateParam={updateElemBuild}
             />
-          }
-          {this.state.reduce.includes("run") && notdly &&
-            <RenderTextField
-              id="reduce_run_maxmissing"
-              fieldlabel="- Run max missing"
-              value={this.state.reduce_run_maxmissing}
-              options={{style:{marginLeft:"2em"}}}
-              updateHelpFor={this.updateHelpFor}
-              updateParam={this.updateElemBuild}
-            />
-          }
-          {notdly &&
-            <RenderTextField
-              id="maxmissing"
-              fieldlabel="Max missing"
-              value={this.state.maxmissing}
-              options={{}}
-              updateHelpFor={this.updateHelpFor}
-              updateParam={this.updateElemBuild}
-            />
-          }
-          <RenderTextField
-            id="smry"
-            fieldlabel="Summary"
-            value={this.state.smry}
-            options={{}}
-            updateHelpFor={this.updateHelpFor}
-            updateParam={this.updateElemBuild}
-          />
-          {this.state.smry.length > 0 &&
-            <div>
+            {datastate.reduce.includes("run") &&
               <RenderTextField
-                id="smry_add"
-                fieldlabel="- Smry Add"
-                value={this.state.smry_add}
-                options={{style:{marginLeft:"2em"}}}
-                updateHelpFor={this.updateHelpFor}
-                updateParam={this.updateElemBuild}
+                id="reduce_run_maxmissing"
+                fieldlabel="- Run max missing"
+                value={datastate.reduce_run_maxmissing}
+                updateHelpFor={props.updateHelpFor}
+                updateParam={updateElemBuild}
               />
-            </div>
-          }
-          {this.state.smry.length > 0 &&
+            }
+          </Box>
+        }
+        {notdly &&
+          <RenderTextField
+            id="maxmissing"
+            fieldlabel="Max missing"
+            value={datastate.maxmissing}
+            updateHelpFor={props.updateHelpFor}
+            updateParam={updateElemBuild}
+          />
+        }
+        <RenderTextField
+          id="smry"
+          fieldlabel="Summary"
+          value={datastate.smry}
+          updateHelpFor={props.updateHelpFor}
+          updateParam={updateElemBuild}
+        />
+        {datastate.smry.length > 0 &&
+          <>
+          <Box sx={{ml:1.5}}>
+            <RenderTextField
+              id="smry_add"
+              fieldlabel="- Smry Add"
+              value={datastate.smry_add}
+              updateHelpFor={props.updateHelpFor}
+              updateParam={updateElemBuild}
+            />
             <RenderTextField
               id="smry_n"
               fieldlabel="- Smry Number"
-              value={this.state.smry_n}
-              options={{style:{marginLeft:"2em"}}}
-              updateHelpFor={this.updateHelpFor}
-              updateParam={this.updateElemBuild}
+              value={datastate.smry_n}
+              updateHelpFor={props.updateHelpFor}
+              updateParam={updateElemBuild}
             />
-          }
-          {this.state.smry.length > 0 && this.state.smry.includes('run') &&
-            <RenderTextField
-              id="smry_run_maxmissing"
-              fieldlabel="- Smry Max missing"
-              value={this.state.smry_run_maxmissing}
-              options={{style:{marginLeft:"2em"}}}
-              updateHelpFor={this.updateHelpFor}
-              updateParam={this.updateElemBuild}
-            />
-          }
-          {this.state.smry.length > 0 &&
-            <RenderTextField
-              id="smry_only"
-              fieldlabel="Summary only"
-              value={this.state.smry_only}
-              options={{}}
-              updateHelpFor={this.updateHelpFor}
-              updateParam={this.updateElemBuild}
-            />
-          }
+            {datastate.smry.includes('run') &&
+              <RenderTextField
+                id="smry_run_maxmissing"
+                fieldlabel="- Smry Max missing"
+                value={datastate.smry_run_maxmissing}
+                updateHelpFor={props.updateHelpFor}
+                updateParam={updateElemBuild}
+              />
+            }
+          </Box>
           <RenderTextField
-            id="normal"
-            fieldlabel="Normal"
-            value={this.state.normal}
-            options={{}}
-            updateHelpFor={this.updateHelpFor}
-            updateParam={this.updateElemBuild}
+            id="smry_only"
+            fieldlabel="- Summary only"
+            value={datastate.smry_only}
+            updateHelpFor={props.updateHelpFor}
+            updateParam={updateElemBuild}
           />
-          {this.state.interval !== 'yly' && this.state.interval !== "[1]" &&
-            <RenderTextField
-              id="groupby"
-              fieldlabel="Group by"
-              value={this.state.groupby}
-              options={{}}
-              updateHelpFor={this.updateHelpFor}
-              updateParam={this.updateElemBuild}
-            />
-          }
+          </>
+        }
+        <RenderTextField
+          id="normal"
+          fieldlabel="Normal"
+          value={datastate.normal}
+          updateHelpFor={props.updateHelpFor}
+          updateParam={updateElemBuild}
+        />
+        {datastate.interval !== 'yly' && datastate.interval !== "[1]" &&
           <RenderTextField
-            id="prec"
-            fieldlabel="Precision"
-            value={this.state.prec}
-            options={{}}
-            updateHelpFor={this.updateHelpFor}
-            updateParam={this.updateElemBuild}
+            id="groupby"
+            fieldlabel="Group by"
+            value={datastate.groupby}
+            updateHelpFor={props.updateHelpFor}
+            updateParam={updateElemBuild}
           />
+        }
+        <RenderTextField
+          id="prec"
+          fieldlabel="Precision"
+          value={datastate.prec}
+          updateHelpFor={props.updateHelpFor}
+          updateParam={updateElemBuild}
+        />
 
-          {this.state.name.length > 0 &&
-            <Button 
-              size="small"
-              variant="outlined"
-              style={{marginTop:"0.5em", backgroundColor:"lightcyan"}}
-              onMouseDown={this.addElement}
-            >
-              Add element
-            </Button>
-          }
-          {this.state.name.length > 0 && this.state.elems.includes("{") &&
-            <Button 
-              size="small"
-              variant="outlined"
-              style={{marginTop:"0.5em", marginLeft:"0.5em", backgroundColor:"lightcyan"}}
-              onMouseDown={this.replaceElements}
-            >
-              Replace elements
-            </Button>
-          }
-        </Grid>
-
-        <Grid item xs={4}>
-          <Typography variant="h6">
-            Optional input
-          </Typography>
-          <RenderTextField
-            id="meta"
-            fieldlabel="Meta options"
-            value={this.state.meta}
-            options={{style: {width:"95%"}}}
-            updateHelpFor={this.updateHelpFor}
-            updateParam={this.updateParam}
-          />
-          <RenderTextField
-            id="output"
-            fieldlabel="Output type"
-            value={this.state.output}
-            options={{disabled: this.state.meta.length && this.state.output === 'json' ? true : false}}
-            updateHelpFor={this.updateHelpFor}
-            updateParam={this.updateParam}
-          />
-        </Grid>
+        {datastate.name.length > 0 &&
+          <Button 
+            id="add"
+            size="small"
+            variant="outlined"
+            onMouseDown={addElement}
+          >
+            Add element
+          </Button>
+        }
+        {datastate.name.length > 0 && datastate.elems.includes("{") &&
+          <Button 
+            id="replace"
+            size="small"
+            variant="outlined"
+            sx={{ml:1}}
+            onMouseDown={addElement}
+          >
+            Replace elements
+          </Button>
+        }
       </Grid>
-    )
-  }
+
+      <Grid item xs={4}>
+        <Typography variant="h6">
+          Optional input
+        </Typography>
+        <RenderTextField
+          id="meta"
+          fieldlabel="Meta options"
+          value={datastate.meta}
+          options={{width:0.95}}
+          updateHelpFor={props.updateHelpFor}
+          updateParam={updateParam}
+        />
+        <RenderTextField
+          id="output"
+          fieldlabel="Output type"
+          value={datastate.output}
+          options={{disabled: datastate.meta.length && datastate.output === 'json' ? true : false}}
+          updateHelpFor={props.updateHelpFor}
+          updateParam={updateParam}
+        />
+      </Grid>
+    </Grid>
+  )
 }
+
+export default StnDataInput
