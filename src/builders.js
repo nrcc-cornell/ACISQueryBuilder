@@ -245,36 +245,48 @@ export function buildExplanation(params) {
   return explanation
 }
 
-export function checkHasInterval(update) {
-  if (update.elems.length > 0) {
-    try {
-      let updateElems = JSON.parse(update.elems)
-      let cond = false
-      updateElems.forEach((ue) => {
-        if (ue.hasOwnProperty('interval') && ue.interval.length) {
-          cond = true
-        }
-      })
-      return cond
-    } catch {
-      console.log('Error parsing elems update: ' + update.elems)
-      return false
-    }
-  } else {
-    return false
-  }
+export function clearElementKeys(elementKeys) {
+  let clearedKeys = {}
+  elementKeys.forEach((e) => {
+    clearedKeys = {...clearedKeys, ...{[e]:""}}
+  })
+  return clearedKeys
 }
 
-export const checkElemsError = (strelems) => {
+export function unbuildElements(dselems, elementKeys) {
+  var lastParsedElems
   try {
-    if (strelems.includes("{")) {
-      // check for valid json
-      JSON.parse(strelems)
+    const parsedElems = JSON.parse(dselems)
+    lastParsedElems = parsedElems.at(-1)
+    if (lastParsedElems.hasOwnProperty('reduce') && typeof lastParsedElems.reduce === 'object') {
+      if (lastParsedElems.reduce.hasOwnProperty('add')) {
+        lastParsedElems = {...lastParsedElems, ...{reduce_add: lastParsedElems.reduce.add}}
+      }
+      if (lastParsedElems.reduce.hasOwnProperty('n')) {
+        lastParsedElems = {...lastParsedElems, ...{reduce_n: lastParsedElems.reduce.n}}
+      }
+      if (lastParsedElems.reduce.hasOwnProperty('run_maxmissing')) {
+        lastParsedElems = {...lastParsedElems, ...{reduce_run_maxmissing: lastParsedElems.reduce.run_maxmissing}}
+      }
+      lastParsedElems = {...lastParsedElems, ...{reduce: lastParsedElems.reduce.reduce}}
     }
-    return false
+    if (lastParsedElems.hasOwnProperty('smry') && typeof lastParsedElems.smry === 'object') {
+      if (lastParsedElems.smry.hasOwnProperty('add')) {
+        lastParsedElems = {...lastParsedElems, ...{smry_add: lastParsedElems.smry.add}}
+      }
+      if (lastParsedElems.smry.hasOwnProperty('n')) {
+        lastParsedElems = {...lastParsedElems, ...{smry_n: lastParsedElems.smry.n}}
+      }
+      if (lastParsedElems.smry.hasOwnProperty('run_maxmissing')) {
+        lastParsedElems = {...lastParsedElems, ...{smry_run_maxmissing: lastParsedElems.smry.run_maxmissing}}
+      }
+      lastParsedElems = {...lastParsedElems, ...{smry: lastParsedElems.smry.reduce}}
+    }
   } catch {
-    return true
-  }    
+    lastParsedElems = {}
+  }
+  const clearedKeys = clearElementKeys(elementKeys)
+  return {...clearedKeys, ...lastParsedElems}
 }
 
 export function basicFormat(results_json) {
@@ -294,4 +306,61 @@ export function basicFormat(results_json) {
     }
   })
   return {results_string: results_string, dataimage: dataimage}
+}
+
+export function checkHasInterval(update) {
+  if (update.length > 0 && update.includes("{")) {
+    try {
+      let updateElems = JSON.parse(update)
+      let cond = false
+      updateElems.forEach((ue) => {
+        if (ue.hasOwnProperty('interval') && ue.interval.length) {
+          cond = true
+        }
+      })
+      return cond
+    } catch {
+      console.log('Error parsing elems update: ' + update)
+      return false
+    }
+  } else {
+    return false
+  }
+}
+
+export function checkElemsError(strelems) {
+  try {
+    if (strelems.includes("{")) {
+      // check for valid json
+      JSON.parse(strelems)
+    }
+    return false
+  } catch {
+    return true
+  }    
+}
+
+export function updateState(datafields, elementKeys, input_params, resetElemsBuilder) {
+  let newstate= {}
+  let checkHasIntervalStatus = false
+  let checkElemsErrorStatus = false
+  datafields.forEach((key) => {
+    if (input_params.hasOwnProperty(key)) {
+      if (key === 'elems') {
+        const strelems = typeof input_params.elems === 'object' ? JSON.stringify(input_params.elems) : input_params.elems
+        newstate = ({...newstate, ...{elems: strelems}})
+        checkHasIntervalStatus = checkHasInterval(strelems)
+        checkElemsErrorStatus = checkElemsError(strelems)
+        if (resetElemsBuilder && strelems.length > 0) {
+          const lastParsedElems = unbuildElements(strelems, elementKeys)
+          newstate = {...newstate, ...lastParsedElems}
+        }
+      } else {
+        newstate= ({...newstate, ...{[key]: input_params[key]}})
+      }
+    } else {
+      newstate = ({...newstate, ...{[key]: ''}})
+    }
+  })
+  return {newstate, checkHasIntervalStatus, checkElemsErrorStatus}
 }

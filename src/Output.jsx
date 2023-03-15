@@ -11,13 +11,13 @@ import { basicFormat } from './builders'
 import { acisServers } from './acisServers'
 
 const Output = (props) => {
+  const { input_params_string, setInput_params_string } = props
   const [ datastate, setDatastate ] = useState({
     results: "",
     results_json: {},
     //format: "normal", hard code all whitespace options to pre-wrap, instead of some being "normal"
     dataimage: "",
   })
-  const [ input_params_string, setInput_params_string ] = useState("")
   const [ hasParamsError, setHasParamsError ] = useState(false)
   const [ selectedButton, setSelectedButton ] = useState("JSON")
   const [ isCsv, setIsCsv ] = useState(false)
@@ -32,18 +32,10 @@ const Output = (props) => {
   }
 
   // user changed parameter string
-  const handleParamsChange = event => {
-    const inputString = event.target.value
-    setInput_params_string(inputString)
-    setDatastate({...datastate, ...{results: ''}})
-    if (inputString.length > 0) {
-      try {
-        const parsedString = JSON.parse(inputString)
-        props.setInput_params(parsedString)
-        setHasParamsError(false)
-      } catch {
-        setHasParamsError(true)
-      }
+  const handleParamsChange = (event) => {
+    setInput_params_string(event.target.value)
+    if (datastate.results.length) {
+      setDatastate({...datastate, ...{results: ''}})
     }
   }  
 
@@ -115,7 +107,7 @@ const Output = (props) => {
   // JSON parameters object needs to be stringified for display in text box
   useEffect(() => {
     //if (Object.keys(props.input_params).length === 0) {
-      setDatastate({...datastate, ...{results:''}})
+    setDatastate({...datastate, ...{results:''}})
     //}
     let newparams = props.input_params
     if (props.input_params.hasOwnProperty("elems") && props.input_params.elems.includes("{")) {
@@ -132,6 +124,20 @@ const Output = (props) => {
     // eslint-disable-next-line
   }, [props.input_params])
 
+  // check newly created params string for error
+  useEffect(() => {
+    if (input_params_string.length > 0) {
+      try {
+        const parsedString = JSON.parse(input_params_string)
+        props.setInput_params(parsedString)
+        setHasParamsError(false)
+      } catch {
+        setHasParamsError(true)
+      }
+    }
+    // eslint-disable-next-line
+  }, [input_params_string])
+
   // update url of server whenever the wstype or specific server selections change
   useEffect(() => {
     setDatastate({...datastate, ...{
@@ -140,7 +146,7 @@ const Output = (props) => {
       dataimage: "",
     }})
     // eslint-disable-next-line
-}, [props.wstype, props.server])
+  }, [props.wstype, props.server])
 
   return (
     <Box sx={{mt:"1em"}}>
@@ -165,7 +171,7 @@ const Output = (props) => {
         helperText={hasParamsError ? "Error in Parameters encoding" : ""}
         multiline={true}
         fullWidth={true}
-        inputProps={{sx:{fontSize:"90%",p:0}}}
+        inputProps={{sx:{fontSize:"90%"}}}
         InputProps={{
           endAdornment: (
             <InputAdornment position="end">

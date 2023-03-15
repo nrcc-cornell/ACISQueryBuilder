@@ -21,6 +21,7 @@ const StnMetaInput = (props) => {
     output: '',
     network: '',
   })
+  const [ datetype, setDatetype ] = useState('pair')
  
   const updateParam = (update) => {
     setMetastate({...metastate, ...update})
@@ -36,6 +37,11 @@ const StnMetaInput = (props) => {
         newmeta = ({...newmeta, ...{[key]: ''}})
       }
     })
+    if (Object.keys(props.input_params).includes("date") && datetype === "pair") {
+      setDatetype("single")
+    } else if (Object.keys(props.input_params).includes("sdate") && datetype === "single") {
+      setDatetype("pair")
+    }
     setMetastate(newmeta)
     // eslint-disable-next-line
   }, [props.input_params])
@@ -153,6 +159,8 @@ const StnMetaInput = (props) => {
               date={metastate.date}
               updateHelpFor={props.updateHelpFor}
               updateParam={updateParam}
+              datetype={datetype}
+              setDatetype={setDatetype}
             />
           }
         </Grid>

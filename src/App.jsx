@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { BrowserRouter } from 'react-router-dom'
 import QuerySelector from './QuerySelector.jsx'
 import StnMetaInput from './StnMetaInput.jsx'
 import StnDataInput from './StnDataInput.jsx'
@@ -10,14 +11,17 @@ import GeneralInput from './GeneralInput.jsx'
 import Output from './Output'
 import HelpTable from './HelpTable'
 import DrawerContent from './DrawerContent.jsx'
+import CheckSearchParams from './CheckSearchParams'
 
 const App = () => {
-  const [wstype, setWstype] = useState('StnData')
-  const [server, setServer] = useState('Any')
-  const [input_params, setInput_params] = useState({})
-  const [generalArea, setGeneralArea] = useState('')
-  const [helpFor, setHelpFor] = useState()
-  const [drawerStatus, setDrawerStatus] = useState(false)
+  const [ wstype, setWstype ] = useState('StnData')
+  const [ server, setServer ] = useState('Any')
+  const [ input_params, setInput_params ] = useState({})
+  const [ input_params_string, setInput_params_string ] = useState('')
+  const [ generalArea, setGeneralArea ] = useState('')
+  const [ resetElemsBuilder, setResetElemsBuilder ] = useState(false)
+  const [ helpFor, setHelpFor ] = useState()
+  const [ drawerStatus, setDrawerStatus ] = useState(false)
   
   const handleQueryChange = (value) => {
     setWstype(value)
@@ -41,7 +45,7 @@ const App = () => {
 
   return (
     <div>
-      <QuerySelector
+       <QuerySelector
         wstype={wstype}
         handleChange={handleQueryChange}
         toggleDrawer={setDrawerStatus}
@@ -58,6 +62,8 @@ const App = () => {
           updateInputParams={updateInputParams}
           updateHelpFor={setHelpFor}
           input_params={input_params}
+          resetElemsBuilder={resetElemsBuilder}
+          setResetElemsBuilder={setResetElemsBuilder}
         />
       }
       {wstype === "MultiStnData" && 
@@ -65,6 +71,8 @@ const App = () => {
           updateInputParams={updateInputParams}
           updateHelpFor={setHelpFor}
           input_params={input_params}
+          resetElemsBuilder={resetElemsBuilder}
+          setResetElemsBuilder={setResetElemsBuilder}
         />
       }
       {wstype === "StnHourly" && 
@@ -72,6 +80,8 @@ const App = () => {
           updateInputParams={updateInputParams}
           updateHelpFor={setHelpFor}
           input_params={input_params}
+          resetElemsBuilder={resetElemsBuilder}
+          setResetElemsBuilder={setResetElemsBuilder}
         />
       }
       {wstype === "GridData" && 
@@ -79,6 +89,8 @@ const App = () => {
           updateInputParams={updateInputParams}
           updateHelpFor={setHelpFor}
           input_params={input_params}
+          resetElemsBuilder={resetElemsBuilder}
+          setResetElemsBuilder={setResetElemsBuilder}
         />
       }
       {wstype === "GridData2" && 
@@ -86,6 +98,8 @@ const App = () => {
           updateInputParams={updateInputParams}
           updateHelpFor={setHelpFor}
           input_params={input_params}
+          resetElemsBuilder={resetElemsBuilder}
+          setResetElemsBuilder={setResetElemsBuilder}
         />
       }
       {wstype === "General" && 
@@ -93,6 +107,7 @@ const App = () => {
           updateInputParams={updateInputParams}
           updateHelpFor={setHelpFor}
           input_params={input_params}
+          generalArea={generalArea}
           updateGeneralArea={setGeneralArea}
         />
       }
@@ -107,23 +122,32 @@ const App = () => {
         wstype={wstype}
         server={server}
         generalArea={generalArea}
+        input_params_string={input_params_string}
+        setInput_params_string={setInput_params_string}
+
       />
       <DrawerContent 
         server={server}
         updateServer={setServer}
         drawerStatus={drawerStatus}
         toggleDrawer={setDrawerStatus}
+        setWstype={setWstype}
+        setInput_params_string={setInput_params_string}
+        setInput_params={setInput_params}
+        setGeneralArea={setGeneralArea}
+        setResetElemsBuilder={setResetElemsBuilder}
       />
+       <BrowserRouter>
+        <CheckSearchParams 
+          setWstype={setWstype}
+          setInput_params_string={setInput_params_string}
+          setInput_params={setInput_params}
+          setGeneralArea={setGeneralArea}
+          setResetElemsBuilder={setResetElemsBuilder}
+        />
+      </BrowserRouter>
     </div>
   )
 }
 
 export default App
-
-/*       {wstype !== 'StnHourly' && wstype !== 'GridData2' &&
-        <Footer 
-          server={server}
-          updateServer={setServer}
-        />
-      }
-*/

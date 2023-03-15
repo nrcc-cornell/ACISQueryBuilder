@@ -7,7 +7,7 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import Switch from '@mui/material/Switch'
 import RenderTextField from './RenderTextField'
 import DateSelection from './DateSelection'
-import { buildElement, buildImage, checkHasInterval, checkElemsError } from './builders.js'
+import { buildElement, updateState, buildImage, checkElemsError } from './builders.js'
 
 const GridData2Input = (props) => { 
 
@@ -51,6 +51,7 @@ const GridData2Input = (props) => {
   const [ hasElemsError, setHasElemsError ] = useState(false)
   const [ hasNestElemsError, setHasNestElemsError ] = useState(false)
   const [ mapcontrols, setMapcontrols ] = useState(false)
+  const [ datetype, setDatetype ] = useState('pair')
   
   // images are currently disabled //
   const includeImageControls = false
@@ -178,22 +179,16 @@ const GridData2Input = (props) => {
 
   // Update local variable storage whenever input_params updates
   useEffect(() => {
-    let newstate= {}
-    datafields.forEach((key) => {
-      if (props.input_params.hasOwnProperty(key)) {
-        if (key === 'elems' && typeof props.input_params.elems === 'object') {
-          const strelems = JSON.stringify(props.input_params.elems)
-          newstate= ({...newstate, ...{[key]: strelems}})
-          setHasInterval(checkHasInterval({[key]: strelems}))
-          setHasElemsError(checkElemsError(strelems))
-        } else {
-          newstate= ({...newstate, ...{[key]: props.input_params[key]}})
-        }
-      } else {
-        newstate = ({...newstate, ...{[key]: ''}})
-      }
-    })
+    const {newstate, checkHasIntervalStatus, checkElemsErrorStatus} = updateState(datafields, elementKeys, props.input_params, props.resetElemsBuilder)
     setDatastate({...datastate, ...newstate})
+    setHasInterval(checkHasIntervalStatus)
+    setHasElemsError(checkElemsErrorStatus)
+    props.setResetElemsBuilder(false)
+    if (Object.keys(props.input_params).includes("date") && datetype === "pair") {
+      setDatetype("single")
+    } else if (Object.keys(props.input_params).includes("sdate") && datetype === "single") {
+      setDatetype("pair")
+    }
     // eslint-disable-next-line
   }, [props.input_params])
 
@@ -266,6 +261,8 @@ const GridData2Input = (props) => {
             date={datastate.date}
             updateHelpFor={updateHelpFor}
             updateParam={updateParam}
+            datetype={datetype}
+            setDatetype={setDatetype}  
           />
           <RenderTextField
             id="grid"

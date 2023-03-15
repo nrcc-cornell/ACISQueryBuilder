@@ -38,6 +38,19 @@ const GeneralInput = (props) => {
     // eslint-disable-next-line
   }, [props.input_params])
 
+  useEffect(() => {
+    setGeneralArea(props.generalArea)
+    // eslint-disable-next-line
+  }, [props.generalArea])
+
+  useEffect(() => {
+    if (Object.keys(datastate).indexOf(generalArea) > -1) {
+      setGeneralArea("state")
+      props.updateGeneralArea("state")
+      }
+    // eslint-disable-next-line
+  }, [])
+
   return (
     <div>
       <Grid container>
@@ -58,11 +71,11 @@ const GeneralInput = (props) => {
             variant="outlined"
             size="small"
           >
-            <MenuItem sx={{fontSize:"90%"}} value={'state'}>state</MenuItem>
-            <MenuItem sx={{fontSize:"90%"}} value={'county'}>county</MenuItem>
-            <MenuItem sx={{fontSize:"90%"}} value={'climdiv'}>climdiv</MenuItem>
-            <MenuItem sx={{fontSize:"90%"}} value={'cwa'}>cwa</MenuItem>
-            <MenuItem sx={{fontSize:"90%"}} value={'basin'}>basin</MenuItem>
+            <MenuItem value={'state'}>state</MenuItem>
+            <MenuItem value={'county'}>county</MenuItem>
+            <MenuItem value={'climdiv'}>climdiv</MenuItem>
+            <MenuItem value={'cwa'}>cwa</MenuItem>
+            <MenuItem value={'basin'}>basin</MenuItem>
           </TextField>
           <br />
           <Typography variant="caption">

@@ -1,22 +1,22 @@
-import React, { useState } from 'react'
+import React from 'react'
 import Chip from '@mui/material/Chip'
 import RenderTextField from './RenderTextField'
 
 const DateSelection = (props) => { 
-  const [ datetype, setDatetype ] = useState('pair')
+  const { updateParam, updateHelpFor, date, sdate, edate, datetype, setDatetype } = props
 
   const handleChipClick = () => {
     if (datetype === 'pair') {
-      props.updateParam({
+      updateParam({
         sdate:"", 
         edate:"", 
-        date:props.sdate
+        date:sdate
       })
       setDatetype("single")
     } else {
-      props.updateParam({
+      updateParam({
         date: "", 
-        sdate:props.date
+        sdate:date
       })
       setDatetype("pair")
     }
@@ -35,16 +35,16 @@ const DateSelection = (props) => {
           <RenderTextField
           id="sdate"
           fieldlabel="Start date"
-          value={props.sdate}
-          updateHelpFor={props.updateHelpFor}
-          updateParam={props.updateParam}
+          value={sdate}
+          updateHelpFor={updateHelpFor}
+          updateParam={updateParam}
           />
           <RenderTextField
           id="edate"
           fieldlabel="End date"
-          value={props.edate}
-          updateHelpFor={props.updateHelpFor}
-          updateParam={props.updateParam}
+          value={edate}
+          updateHelpFor={updateHelpFor}
+          updateParam={updateParam}
           />
         </div>
       }
@@ -52,9 +52,9 @@ const DateSelection = (props) => {
         <RenderTextField
             id="date"
             fieldlabel="Date"
-            value={props.date}
-            updateHelpFor={props.updateHelpFor}
-            updateParam={props.updateParam}
+            value={date}
+            updateHelpFor={updateHelpFor}
+            updateParam={updateParam}
         />
       }
     </div>

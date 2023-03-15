@@ -1,39 +1,34 @@
-import React, { useState } from 'react'
+import React from 'react'
 import Typography from '@mui/material/Typography'
-import Button from '@mui/material/Button'
-import Menu from '@mui/material/Menu'
-import MenuItem from '@mui/material/MenuItem'
 import Box from '@mui/material/Box'
 import Link from '@mui/material/Link'
 import Drawer from '@mui/material/Drawer'
+import Divider from '@mui/material/Divider'
+import ExamplesList from './ExamplesList'
+import ServerSelect from './ServerSelect'
 
 const DrawerContent = (props) => { 
-  const options = ['Any','NRCC','HPRCC'] //removed SRCC and added AWS1 -kle 2021-5-4; removed AWS1 -kle 2022-1-27
-
-  const [ anchorEl, setAnchorEl ] = useState(null)
-
-  const handleOpenMenu = event => {
-    setAnchorEl(event.currentTarget)
-  }
-  
-  const handleCloseMenu = () => {
-    setAnchorEl(null)
-  }
-
-  const handleMenuSelect = (server) => {
-    setAnchorEl(null)
-    props.updateServer(server)
-    props.toggleDrawer(false)
-  }
   
   return (
     <Drawer
         anchor="right"
         open={props.drawerStatus}
+        PaperProps={{
+          sx: {width: "50%"},
+        }}
         onClose={()=>props.toggleDrawer(false)}
     >
-      <Box sx={{textAlign:"center", p:"1em"}}>
-        <Typography sx={{mb:"1em"}}>
+      <Box sx={{textAlign:"left", p:"1em"}}>
+        <ExamplesList 
+          setWstype={props.setWstype}
+          setInput_params_string={props.setInput_params_string}
+          setInput_params={props.setInput_params}
+          toggleDrawer={props.toggleDrawer}
+          setGeneralArea={props.setGeneralArea}
+          setResetElemsBuilder={props.setResetElemsBuilder}
+        />
+        <Divider />
+        <Typography sx={{my:"1em"}}>
             <Link 
                 variant="body2"
                 href='https://www.rcc-acis.org/docs_webservices.html' 
@@ -41,34 +36,15 @@ const DrawerContent = (props) => {
                 rel="noopener" 
                 onClick={()=>props.toggleDrawer(false)}
             >
-                Visit full documentation
+                Go to full documentation
             </Link>
         </Typography>
-        <Button 
-            variant="verysmall" 
-            size="small" 
-            onClick={handleOpenMenu}
-        >
-            Select Specific Server {props.server !== 'Any' && 
-                "(" + props.server + ")"
-        }
-        </Button>
-        <Menu
-            open={Boolean(anchorEl)}
-            anchorEl={anchorEl}
-            onClose={handleCloseMenu}
-        >
-        {options.map(option => (
-            <MenuItem
-            variant="verysmall"
-            key={option}
-            selected={option === props.server}
-            onClick={() => handleMenuSelect(option)}
-            >
-            {option}
-            </MenuItem>
-        ))}
-        </Menu> 
+        <Divider />
+        <ServerSelect 
+           updateServer={props.updateServer}
+           toggleDrawer={props.toggleDrawer}
+           server={props.server}
+        />
       </Box>
     </Drawer>  
   )

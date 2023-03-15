@@ -3,12 +3,12 @@ import TextField from '@mui/material/TextField'
 
 const RenderTextField = (props) => { 
 
-  const handleChange = name => event => {
-    props.updateParam({[name]:event.target.value})
+  const handleChange = (event) => {
+    props.updateParam({[event.target.id]:event.target.value})
   }
 
-  const handleFocus = name => event => {
-    props.updateHelpFor(name)
+  const handleFocus = (event) => {
+    props.updateHelpFor(event.target.id)
   }
 
   const handleBlur = () => {
@@ -40,8 +40,8 @@ const RenderTextField = (props) => {
         placeholder={placeholder}
         InputLabelProps={{ shrink: true }}
         sx={width}
-        onChange={handleChange(props.id)}
-        onFocus={handleFocus(props.id)}
+        onChange={handleChange}
+        onFocus={handleFocus}
         onBlur={handleBlur}
   
       />

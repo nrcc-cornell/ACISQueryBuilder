@@ -37,8 +37,8 @@ const theme = createTheme(({
           props: { variant: "verysmall" },
           style: {
             textTransform: 'none',
-            lineHeight: "1em",
-            fontSize: "75%",
+            lineHeight: "0.75em",
+            fontSize: "80%",
             fontWeight: "normal",
           },
         },
@@ -58,16 +58,20 @@ const theme = createTheme(({
       ],
     },
     MuiMenuItem: {
-      variants: [
-        {
-          props: { variant: "verysmall" },
-          style: {
-            height: "2em",
-            fontSize: "75%"
-          },
+      styleOverrides: {
+        root: {
+          fontSize: "85%",
         },
-      ],
-    }, 
+      },
+    },
+    MuiMenu: {
+      styleOverrides: {
+        list: {
+          paddingTop: "1px",
+          paddingBottom: "1px",
+        },
+      },
+    },
     MuiPaper: {
       variants: [
         {
@@ -103,7 +107,10 @@ const theme = createTheme(({
         input: {
           paddingTop:"7px", 
           paddingBottom:"7px", 
-          fontSize:"80%", 
+          fontSize:"85%", 
+        },
+        multiline: {
+          padding:"7px 14px",
         },
       },
     },
@@ -153,6 +160,7 @@ const theme = createTheme(({
           style: {
             whiteSpace: "pre-wrap",
             fontSize:"95%",
+            overflowWrap:"anywhere",
           },
         },
       ],
