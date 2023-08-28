@@ -39,17 +39,14 @@ const GeneralInput = (props) => {
   }, [props.input_params])
 
   useEffect(() => {
-    setGeneralArea(props.generalArea)
+    if (props.generalArea) {
+      setGeneralArea(props.generalArea)
+    } else {
+      setGeneralArea("state")
+      props.updateGeneralArea("state")    
+    }
     // eslint-disable-next-line
   }, [props.generalArea])
-
-  useEffect(() => {
-    if (Object.keys(datastate).indexOf(generalArea) > -1) {
-      setGeneralArea("state")
-      props.updateGeneralArea("state")
-      }
-    // eslint-disable-next-line
-  }, [])
 
   return (
     <div>

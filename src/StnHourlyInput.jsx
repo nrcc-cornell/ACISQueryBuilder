@@ -19,7 +19,7 @@ const StnHourlyInput = (props) => {
     meta: '',
   })
   const [ hasElemsError, setHasElemsError ] = useState(false)
-  const [ hasInterval, setHasInterval ] = useState(false) //NOT IMPLEMENTED YET
+  //const [ hasInterval, setHasInterval ] = useState(false) //NOT IMPLEMENTED YET
   const [ datetype, setDatetype ] = useState('pair')
 
   const datafields = ['sid','sdate','edate','date','elems','meta']
@@ -62,9 +62,11 @@ const StnHourlyInput = (props) => {
 
   // Update local variable storage whenever input_params updates
   useEffect(() => {
+    // to suppress unused checkHasIntervalStatus warning:
+    // eslint-disable-next-line 
     const {newstate, checkHasIntervalStatus, checkElemsErrorStatus} = updateState(datafields, elementKeys, props.input_params, props.resetElemsBuilder)
     setDatastate({...datastate, ...newstate})
-    setHasInterval(checkHasIntervalStatus)
+    //setHasInterval(checkHasIntervalStatus)  //NOT IMPLEMENTED YET
     setHasElemsError(checkElemsErrorStatus)
     props.setResetElemsBuilder(false)
     if (Object.keys(props.input_params).includes("date") && datetype === "pair") {
@@ -139,7 +141,6 @@ const StnHourlyInput = (props) => {
             id="vN"
             fieldlabel="Var minor"
             value={datastate.vN}
-
             updateHelpFor={props.updateHelpFor}
             updateParam={updateElemBuild}
           />
