@@ -100,8 +100,7 @@
 			["county", "5-digit FIPS id"],
 			["climdiv", "4-character climate division id"],
 			["valid_daterange", "Valid date range (by element) - must specify Elements"],
-			["tzo", "Time zone offset from GMT"],
-			["network", "Station networks"]
+			["tzo", "Time zone offset from GMT"]
 		],
 		"foots": "Values with an asterisk (*) indicate defaults used if 'meta' is not explicityly specified."
 	},
