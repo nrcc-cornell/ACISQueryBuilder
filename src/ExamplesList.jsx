@@ -20,6 +20,11 @@ const ExamplesList = (props) => {
     General: false,
   })
 
+  const displayName = {
+    GridData2: "GridData v2",
+    StnHourly: "Hourly",
+  }
+
   const handleListClick = (wstype) => {
     let openChanges = {[wstype]:!open[wstype]}
     if (exCategory) {
@@ -56,7 +61,7 @@ const ExamplesList = (props) => {
         <Fragment key={key}>
           <ListItemButton sx={{pb:0}} onClick={() => handleListClick(key)}>
             <ListItemText 
-              primary={key}
+              primary={displayName[key] ? displayName[key] : key}
               secondary={open[key] ? " (click example to view)" : ""}
               primaryTypographyProps={{
                 fontSize: 14,

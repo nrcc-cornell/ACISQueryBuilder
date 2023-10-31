@@ -33,6 +33,8 @@ const GridData2Input = (props) => {
     season_start: '',
     reduce: '',
     maxmissing: '',
+    smry: '',
+    smry_only: '',
     area_reduce: '',
     elem_sdate: '',
     elem_edate: '',
@@ -52,9 +54,6 @@ const GridData2Input = (props) => {
   const [ hasNestElemsError, setHasNestElemsError ] = useState(false)
   const [ mapcontrols, setMapcontrols ] = useState(false)
   const [ datetype, setDatetype ] = useState('pair')
-  
-  // images are currently disabled //
-  const includeImageControls = false
   
   const datafields = ['loc','state','bbox','sdate','edate','date','grid','elems','meta','output','image']
   const imagefields = ['info_only','proj','overlays','interp','cmap','width','height','levels']
@@ -96,7 +95,6 @@ const GridData2Input = (props) => {
     }
   }
 
-  // images are currently disabled (includeImageControls: false)
   const updateImage = (update) => {
     const updatedstate = {...datastate, ...update}
     setDatastate(updatedstate)
@@ -104,18 +102,16 @@ const GridData2Input = (props) => {
     props.updateInputParams({image: image})
   }
 
-  // images are currently disabled (includeImageControls: false)
-  //const updateOutput = (update) => {
-  //  if (update.output === 'image') {
-  //    const image = buildImage(imagefields, datastate)
-  //    updateParam({output:"image", image:image})
-  //    setMapcontrols(true)
-  //  } else {
-  //    updateParam(update)
-  //  }
-  //}
+  const updateOutput = (update) => {
+    if (update.output === 'image') {
+      const image = buildImage(imagefields, datastate)
+      updateParam({output:"image", image:image})
+      setMapcontrols(true)
+    } else {
+      updateParam(update)
+    }
+  }
 
-  // images are currently disabled (includeImageControls: false)
   const handleMapControlClick = event => {
     if (datastate.output !== 'image' || event.target.checked) {
       const image = event.target.checked ? buildImage(imagefields, datastate) : ""
@@ -129,16 +125,14 @@ const GridData2Input = (props) => {
       helpFor = 'grid_meta'
     } else if (helpFor === 'output') {
       helpFor = 'grid2_output'
-    } else if (helpFor === 'elems') {
-      helpFor = 'grid2_elems'
-    } else if (helpFor === 'name') {
-      helpFor = 'grid2_name'
     } else if (helpFor === 'reduce') { 
       helpFor = 'grid2_reduce'
     } else if (helpFor === 'grid') {
       helpFor = 'grid2'
     } else if (helpFor === 'bbox') {
       helpFor = 'grid2_bbox'
+    } else if (helpFor === 'smry_only') {
+      helpFor = 'grid2_smry_only'
     } else if (helpFor === 'elem_sdate' || helpFor === 'elem_edate') {
       helpFor = 'date'
     }
@@ -278,11 +272,11 @@ const GridData2Input = (props) => {
             options={{
               width:0.9,
               multiline: true, 
-              placeholder: "Build using Element setup",
+              placeholder: "Enter directly or build using Element setup",
               error: hasElemsError,
               helperText: hasElemsError ? "Error in elements encoding" : "",
             }}
-            updateHelpFor={updateHelpFor}
+            updateHelpFor={() => props.updateHelpFor("grid2_elems")}
             updateParam={updateElems}
           />
           {datastate.elems.includes("{") &&
@@ -305,7 +299,7 @@ const GridData2Input = (props) => {
               id="name"
               fieldlabel="Name"
               value={datastate.name}
-              updateHelpFor={updateHelpFor}
+              updateHelpFor={() => props.updateHelpFor("grid2_elems")}
               updateParam={updateElemBuild}
             />
           }
@@ -372,6 +366,22 @@ const GridData2Input = (props) => {
               id="maxmissing"
               fieldlabel="Max missing"
               value={datastate.maxmissing}
+              updateHelpFor={updateHelpFor}
+              updateParam={updateElemBuild}
+            />
+          }
+          <RenderTextField
+            id="smry"
+            fieldlabel="Summary"
+            value={datastate.smry}
+            updateHelpFor={props.updateHelpFor}
+            updateParam={updateElemBuild}
+          />
+          {datastate.smry.length > 0 &&
+            <RenderTextField
+              id="smry_only"
+              fieldlabel="Summary only"
+              value={datastate.smry_only}
               updateHelpFor={updateHelpFor}
               updateParam={updateElemBuild}
             />
@@ -450,90 +460,87 @@ const GridData2Input = (props) => {
             value={datastate.output}
             options={{disabled: datastate.meta.length && datastate.output === 'json' ? true : false}}
             updateHelpFor={updateHelpFor}
-            updateParam={updateParam}
+            updateParam={updateOutput}
           />
-          {includeImageControls &&
-            <div>
-              <FormControlLabel
-                control={
-                  <Switch
-                    value={mapcontrols}
-                    onChange={handleMapControlClick}
-                    checked={mapcontrols}
-                    color="primary"
-                  />
-                }
-                label="Map settings"
+
+          <FormControlLabel
+            control={
+              <Switch
+                value={mapcontrols}
+                onChange={handleMapControlClick}
+                checked={mapcontrols}
+                color="primary"
               />
-              {mapcontrols &&
-                <Box sx={{pl:"1em"}}>
-                  {datastate.output !== 'image' &&
-                    <RenderTextField
-                      id="info_only"
-                      fieldlabel="Info only"
-                      value={datastate.info_only}
-                      updateHelpFor={updateHelpFor}
-                      updateParam={updateImage}
-                    />
-                  }
-                  <RenderTextField
-                    id="proj"
-                    fieldlabel="Proj"
-                    value={datastate.proj}
-                    updateHelpFor={updateHelpFor}
-                    updateParam={updateImage}
-                  />
-                  <RenderTextField
-                    id="overlays"
-                    fieldlabel="Overlays"
-                    value={datastate.overlays}
-                    updateHelpFor={updateHelpFor}
-                    updateParam={updateImage}
-                  />
-                  <RenderTextField
-                    id="interp"
-                    fieldlabel="Interp"
-                    value={datastate.interp}
-                    updateHelpFor={updateHelpFor}
-                    updateParam={updateImage}
-                  />
-                  <RenderTextField
-                    id="cmap"
-                    fieldlabel="Cmap"
-                    value={datastate.cmap}
-                    updateHelpFor={updateHelpFor}
-                    updateParam={updateImage}
-                  />
-                  {datastate.height.length === 0 &&
-                    <RenderTextField
-                      id="width"
-                      fieldlabel="Width"
-                      value={datastate.width}
-                      options={{required: mapcontrols}}
-                      updateHelpFor={updateHelpFor}
-                      updateParam={updateImage}
-                    />
-                  }
-                  {datastate.width.length === 0 &&
-                    <RenderTextField
-                      id="height"
-                      fieldlabel="Height"
-                      value={datastate.height}
-                      options={{required: mapcontrols}}
-                      updateHelpFor={updateHelpFor}
-                      updateParam={updateImage}
-                    />
-                  }
-                  <RenderTextField
-                    id="levels"
-                    fieldlabel="Levels"
-                    value={datastate.levels}
-                    updateHelpFor={updateHelpFor}
-                    updateParam={updateImage}
-                  />
-                </Box>
+            }
+            label="Map settings"
+          />
+          {mapcontrols &&
+            <Box sx={{pl:"1em"}}>
+              {datastate.output !== 'image' &&
+                <RenderTextField
+                  id="info_only"
+                  fieldlabel="Info only"
+                  value={datastate.info_only}
+                  updateHelpFor={updateHelpFor}
+                  updateParam={updateImage}
+                />
               }
-            </div>
+              <RenderTextField
+                id="proj"
+                fieldlabel="Proj"
+                value={datastate.proj}
+                updateHelpFor={updateHelpFor}
+                updateParam={updateImage}
+              />
+              <RenderTextField
+                id="overlays"
+                fieldlabel="Overlays"
+                value={datastate.overlays}
+                updateHelpFor={updateHelpFor}
+                updateParam={updateImage}
+              />
+              <RenderTextField
+                id="interp"
+                fieldlabel="Interp"
+                value={datastate.interp}
+                updateHelpFor={updateHelpFor}
+                updateParam={updateImage}
+              />
+              <RenderTextField
+                id="cmap"
+                fieldlabel="Cmap"
+                value={datastate.cmap}
+                updateHelpFor={updateHelpFor}
+                updateParam={updateImage}
+              />
+              {datastate.height.length === 0 &&
+                <RenderTextField
+                  id="width"
+                  fieldlabel="Width"
+                  value={datastate.width}
+                  options={{required: mapcontrols}}
+                  updateHelpFor={updateHelpFor}
+                  updateParam={updateImage}
+                />
+              }
+              {datastate.width.length === 0 &&
+                <RenderTextField
+                  id="height"
+                  fieldlabel="Height"
+                  value={datastate.height}
+                  options={{required: mapcontrols}}
+                  updateHelpFor={updateHelpFor}
+                  updateParam={updateImage}
+                />
+              }
+              <RenderTextField
+                id="levels"
+                fieldlabel="Levels"
+                value={datastate.levels}
+                updateHelpFor={updateHelpFor}
+                updateParam={updateImage}
+              />
+            </Box>
           }
         </Grid>
       </Grid>

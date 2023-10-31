@@ -12,6 +12,11 @@ import { acisServers } from './acisServers'
 const QuerySelector = (props) => {
   const query_types = Object.keys(acisServers)
 
+  const displayName = {
+    GridData2: "GridData v2",
+    StnHourly: "Hourly",
+  }
+
   const handleChange = (event, value) => {
     if (value) {
       props.handleChange(value)
@@ -37,7 +42,7 @@ const QuerySelector = (props) => {
                 key={item} 
                 value={item}
               >
-                {item}
+                {displayName[item] ? displayName[item] : item}
               </ToggleButton>                  
             ))}
           </ToggleButtonGroup>

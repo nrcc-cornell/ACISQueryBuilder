@@ -206,7 +206,7 @@
 		"heads": ["Code", "Description"],
 		"contents": [
 			["json", "JavaScript Object Notation (default)"],
-			["png", "png image (display not implemented in this tool)"],
+			["image", "png image only"],
 			["geotiff", "geotiff output (display not implemented in this tool)"]
 		]
 	},
@@ -242,6 +242,13 @@
 		"contents": [
 			["1", "Return only the summary value (no intermediate results). If used, must be specified for each element."]
 		]
+	},
+	"grid2_smry_only": {
+		"heads": ["Code", "Description"],
+		"contents": [
+			["1", "Return only the summary value (no intermediate results). If used, it will be applied to each element."]
+		],
+		"foots": "Preferred location of this optioin is now at the base level of the query."
 	},
 	"reduce_n": {
 		"heads": ["Value", "Description"],
@@ -345,7 +352,6 @@
 			["sum", "Sum of the values for the period"],
 			["mean", "Average of the values for the period"],
 			["stddev", "Standard deviation of the values"],
-			["list", "Array of daily values for the period"],
 			["cnt_xx_yyy", "Count of number of daily values passing threshold"],
 			["pct_xx_yyy", "Percent (integer) of daily values passing threshold"],
 			["fct_xx_yyy", "Fraction (float) of daily values passing threshold"],
@@ -360,6 +366,8 @@
 			["sum", "Sum of the values for the period"],
 			["mean", "Average of the values for the period"],
 			["cnt_xx_yyy", "Count of number of daily values passing threshold"],
+			["pct_xx_yyy", "Percent (integer) of daily values passing threshold"],
+			["fct_xx_yyy", "Fraction (float) of daily values passing threshold"],
 			["", "xx is operator (ge, gt, le, lt, eq, ne); yyy is threshold (integer or floating point); Examples: cnt_ge_0.01, pct_eq_100"]
 		],
 		"foots": "Only certain cnt thresholds are available for LOCA pre-computed models (i.e. allmax, allmin, allmedian, wmean"
@@ -417,7 +425,7 @@
 		"contents": [
 			[" 1", "NRCC Interpolated", "Continental US", "1950-present"],
 			[" 2", "Multi-Sensor Precipitation Estimates", "Continental US", "2006-present"],
-			[" 3", "NRCC Hi-Res", "East of Rockies", "Temp: 1998-present; Pcpn: 2002-present"],
+			[" 3", "NRCC Hi-Res", "East of Rockies", "Temp: 1979-present; Pcpn: 2002-present"],
 			[" 21", "PRISM (https://www.prism.oregonstate.edu)", "Continental US", "Daily: 1981-present; Monthly/Yearly: 1895-present"],
 			[" 4-16", "NARCCAP (to be deprecated) *", "Continental US", "1970-2000, 2040-2070"],
 			["4", "CRCM + NCEP (historical only)"],
@@ -438,7 +446,7 @@
 		"heads": ["Name", "Description", "Area", "Period"],
 		"contents": [
 			["nrcc-nn", "NRCC Interpolated", "Continental US", "1950-present"],
-			["nrcc-model", "NRCC Hi-Res", "East of Rockies", "Temp: 1998-present; Pcpn: 2002-present"],
+			["nrcc-model", "NRCC Hi-Res", "East of Rockies", "Temp: 1979-present; Pcpn: 2002-present"],
 			["ncei-norm:91-20", "NCEI Gridded Monthly 1991-2020 Normals", "Continental US", "1991"],
 			["prism", "PRISM (https://www.prism.oregonstate.edu)", "Continental US", "Daily: 1981-present; Monthly/Yearly: 1895-present"],
 			["livneh", "Livneh (https://www.esrl.noaa.gov/psd/", "Continental US", "1950-2012"],
@@ -466,7 +474,6 @@
 		"contents": [
 			["degreeC", "Temperatures degrees C"],
 			["degreeF", "Temperatures degrees F"],
-			["degreeK", "Temperatures degrees K"],
 			["inch", "Precipitation inches"],
 			["mm", "Precipitation millimeters"]
 		]
@@ -500,7 +507,6 @@
 			["cddXX", "-", "Cooling Degree Days; where XX is base temperature"],
 			["hddXX", "-", "Heating Degree Days; where XX is base temperature"],
 			["gddXX", "-", "Growing Degree Days; where XX is base temperature"],
-			["gddXX", "-", "Growing Degree Days; where XX is base temperature"],
 			["subhead:Additional Element Codes for Monthly/Yearly PRISM Data"],
 			["mly_maxt", "91", "Monthly mean maximum temperature (&deg;F)"],
 			["mly_mint", "92", "Monthly mean minimum temperature (&deg;F)"],
@@ -513,7 +519,7 @@
 		],
 		"foots": "Degree days can also be specified with the keys 'name' (or 'vX') and 'base'. The PRISM mly and yly codes are used to access monthly/yearly PRISM gridded datasets directly, not derived monthly/yearly values reduced from daily gridded data."
 	},
-	"grid2_name": {
+	"grid2_elems": {
 		"heads": ["Abbreviation", "Var Major", "Description"],
 		"contents": [
 			["maxt", "1", "Maximum temperature (&deg;F)"],
@@ -525,16 +531,9 @@
 			["gdd", "44", "Degree days above base (default base 50)"],
 			["cddXX", "-", "Cooling Degree Days; where XX is base temperature"],
 			["hddXX", "-", "Heating Degree Days; where XX is base temperature"],
-			["gddXX", "-", "Growing Degree Days; where XX is base temperature"],
 			["gddXX", "-", "Growing Degree Days; where XX is base temperature"]
 		],
 		"foots": "Degree days can also be specified with the keys 'name' (or 'vX') and 'base'. "
-	},
-	"grid2_elems": {
-		"heads": [],
-		"contents": [
-			["Elements must be specified as an object or list of objects."]
-		]
 	},
 	"info_only": {
 		"heads": ["Code", "Description"],
@@ -546,7 +545,8 @@
 	"proj": {
 		"heads": ["Code", "Description"],
 		"contents": [
-			["lcc", "Lambert conformal conic centered on selected area"]
+			["lcc", "Lambert conformal conic centered on selected area"],
+			["3857", "Spherical/Web Mercator (EPSG:3857)"]
 		],
 		"foots": "Default is Lambert conformal conic centered on the continental US."
 	},
