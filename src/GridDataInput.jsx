@@ -118,7 +118,7 @@ const GridDataInput = (props) => {
 
   // Update local variable storage whenever input_params updates
   useEffect(() => {
-    const {newstate, checkHasIntervalStatus, checkElemsErrorStatus} = updateState(datafields, elementKeys, props.input_params, props.resetElemsBuilder)
+    const {newstate, checkHasIntervalStatus, checkElemsErrorStatus} = updateState(datafields, elementKeys, props.input_params, props.resetElemsBuilder, imagefields)
     setDatastate({...datastate, ...newstate})
     setHasInterval(checkHasIntervalStatus)
     setHasElemsError(checkElemsErrorStatus)

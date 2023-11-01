@@ -111,11 +111,11 @@ export function buildImage(imageKeys, imageValues) {
     }
   })
   // levels must be an array (not a string)
-  if (image.hasOwnProperty('levels')) {
+  if (image.hasOwnProperty('levels') && typeof image.levels == 'string') {
     image.levels = image.levels.replace(/[[\]]/g,'').split(",").map((item) => {return Number(item)})
   }
   // overlays must be an array if more than one are specified
-  if (image.hasOwnProperty('overlays') && image.overlays.includes(",")) {
+  if (image.hasOwnProperty('overlays') && typeof image.overlays == 'string' && image.overlays.includes(",")) {
     image.overlays = image.overlays.replace(/[[\]]/g,'').split(",").map((item) => {return item.replace(/["']/g,'')})
   }
   return image
@@ -340,7 +340,7 @@ export function checkElemsError(strelems) {
   }    
 }
 
-export function updateState(datafields, elementKeys, input_params, resetElemsBuilder) {
+export function updateState(datafields, elementKeys, input_params, resetElemsBuilder, imageKeys=[]) {
   let newstate= {}
   let checkHasIntervalStatus = false
   let checkElemsErrorStatus = false
@@ -354,6 +354,14 @@ export function updateState(datafields, elementKeys, input_params, resetElemsBui
         if (resetElemsBuilder && strelems.length > 0) {
           const lastParsedElems = unbuildElements(strelems, elementKeys)
           newstate = {...newstate, ...lastParsedElems}
+        }
+      } else if (key === 'image') {
+        if (typeof input_params.image === 'object') {
+          const clearedKeys = clearElementKeys(imageKeys)
+          const parsedImage = {...clearedKeys, ...input_params.image}
+          newstate = {...newstate, ...{"image":input_params.image}, ...parsedImage}
+        } else {
+          newstate= ({...newstate, ...{[key]: input_params[key]}})
         }
       } else {
         newstate= ({...newstate, ...{[key]: input_params[key]}})
