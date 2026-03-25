@@ -102,7 +102,8 @@ const StnDataInput = (props) => {
     if (datastate.duration) {
       setNotdly((datastate.duration.length === 3 && datastate.duration !== 'dly') || 
         (datastate.duration.length > 0 && !isNaN(Number(datastate.duration)) && 
-        (datastate.duration !== "1" || (datastate.interval !== 'dly' && !(datastate.interval.includes('[') && datastate.interval.length === 7)))))
+        (datastate.duration !== "1" || (datastate.interval !== 'dly' && !(datastate.interval.includes('[') && datastate.interval.length === 7) && 
+        !(datastate.interval.includes(',') && datastate.interval.length === 5)))))
     }
   }, [datastate.duration, datastate.interval])
 
